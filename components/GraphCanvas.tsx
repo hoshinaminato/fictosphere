@@ -120,13 +120,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     multiSelectionRef.current = multiSelection;
   }, [multiSelection]);
 
-  // Fix error: Narrow selectedPersonId correctly to ensure 'id' is a string in setMultiSelection.
+  // Fix: Narrow selectedPersonId and provide explicit type in functional update to avoid "unknown" type inference errors
   useEffect(() => {
     if (typeof selectedPersonId === 'string') {
-       const id = selectedPersonId;
+       const id: string = selectedPersonId;
        setMultiSelection((prev: Set<string>) => {
           if (prev.size > 1 && prev.has(id)) return prev;
-          return new Set([id]);
+          return new Set<string>([id]);
        });
     }
   }, [selectedPersonId]);

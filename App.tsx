@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Layout, Users, Map as MapIcon, Calendar, Upload, Download, Plus, Check, Loader2, ChevronDown, FolderOpen, Trash2, Edit3, Pin, PinOff, Info, Book, RefreshCw, Settings, Shield, Heart, Bug, Copy, ExternalLink, Sparkles } from 'lucide-react';
 import { GenealogyModule } from './components/GenealogyModule';
@@ -9,6 +10,7 @@ import { initialProjects, getTemplateData, ProjectTemplate } from './services/mo
 import { loadAllData, seedDB, dbSaveProject, dbSaveSettings, dbDeleteProject } from './services/storage';
 import { validateProject } from './services/validator'; // Import validator
 import { getGlobalThemeCSS } from './utils/themeStyles';
+import { ContextMenu } from './components/ContextMenu';
 
 // Modals
 import { AboutModal } from './components/modals/AboutModal';
@@ -500,6 +502,9 @@ const App: React.FC = () => {
     <div className={`app-wrapper flex flex-col h-screen w-screen bg-gray-950 text-slate-300 overflow-hidden transition-colors duration-500 ${isDeleting ? 'pointer-events-none opacity-80' : ''}`}>
       <style>{getGlobalThemeCSS(theme)}</style>
       
+      {/* Global Context Menu */}
+      <ContextMenu />
+
       {/* Top System Bar */}
       <div className="h-12 border-b border-gray-800 bg-gray-900 flex items-center justify-between px-4 z-50 shrink-0 shadow-sm relative">
         <div className="flex items-center gap-4">

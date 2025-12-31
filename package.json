@@ -13,6 +13,8 @@
   ],
   "license": "MIT",
   "scripts": {
+        "web": "vite",
+    "electron": "concurrently \"vite\" \"wait-on tcp:5174 && electron .\"",
     "dev": "concurrently \"vite\" \"wait-on tcp:5174 && electron .\"",
     "build": "tsc && vite build",
     "dist": "npm run build && electron-builder"

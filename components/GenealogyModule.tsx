@@ -128,7 +128,7 @@ export const GenealogyModule: React.FC<GenealogyModuleProps> = ({
     setSelectedPersonId(undefined);
   };
   
-  const handleAddRelation = (s: string, t: string, type: RelationType) => {
+  const handleAddRelation = (s: string, t: string, type: string) => {
      const newLink: Relationship = {
         id: Math.random().toString(36).substr(2,9),
         source: s, target: t, type, strength: 5

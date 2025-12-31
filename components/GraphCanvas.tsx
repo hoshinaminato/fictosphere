@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 import { 
   Simulation, 
@@ -82,8 +81,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   const [isExporting, setIsExporting] = useState(false);
   
-  const [multiSelection, setMultiSelection] = useState<Set<string>>(new Set());
-  const multiSelectionRef = useRef<Set<string>>(new Set()); 
+  // Fix: Explicitly type Set generic and provide generic to new Set()
+  const [multiSelection, setMultiSelection] = useState<Set<string>>(new Set<string>());
+  const multiSelectionRef = useRef<Set<string>>(new Set<string>()); 
   const isDragMovedRef = useRef(false);
   const [isBrushing, setIsBrushing] = useState(false);
 
@@ -120,7 +120,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     multiSelectionRef.current = multiSelection;
   }, [multiSelection]);
 
-  // Fix: Narrow selectedPersonId and provide explicit type in functional update to avoid "unknown" type inference errors
+  // Fix: Narrow selectedPersonId and use strictly typed callback to avoid "unknown" parameter errors in prev.has()
   useEffect(() => {
     if (typeof selectedPersonId === 'string') {
        const id: string = selectedPersonId;

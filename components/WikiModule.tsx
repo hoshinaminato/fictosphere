@@ -213,7 +213,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
   const handleCreate = () => {
     const newId = Math.random().toString(36).substr(2, 9);
     const defaultCategory: KeywordCategory = activeCategory === 'ALL' ? 'ITEM' : activeCategory;
-    const defaultParent = selectedId ? selectedId : undefined;
+    const defaultParent = selectedId || undefined;
     setFormData({ id: newId, name: '新条目', category: defaultCategory, parentId: defaultParent, description: '', tags: [], attachments: [] });
     setSelectedId(newId);
     setIsEditing(true);

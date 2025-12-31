@@ -13,7 +13,7 @@
   ],
   "license": "MIT",
   "scripts": {
-        "web": "vite",
+    "web": "vite",
     "electron": "concurrently \"vite\" \"wait-on tcp:5174 && electron .\"",
     "dev": "concurrently \"vite\" \"wait-on tcp:5174 && electron .\"",
     "build": "tsc && vite build",
@@ -52,6 +52,27 @@
     ],
     "directories": {
       "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.svg"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "assets/icon.svg"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Office"
     }
   }
 }

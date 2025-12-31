@@ -1,4 +1,3 @@
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Trash2, ShieldAlert, Database } from 'lucide-react';
 import { dbDeleteProject, loadAllData } from '../services/storage';
@@ -17,8 +16,8 @@ interface GlobalErrorState {
 /**
  * Global error boundary to catch and handle application-level crashes.
  */
-// Fix: Use standard inheritance from React.Component to resolve state/props/setState access errors.
-export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorState> {
+// Fix: Directly extend Component from 'react' to ensure setState/props/state are correctly typed and inherited.
+export class GlobalError extends Component<GlobalErrorProps, GlobalErrorState> {
   public state: GlobalErrorState = {
     hasError: false,
     error: null,
@@ -38,7 +37,7 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
   // Lifecycle method for error catching.
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
-    // Fix: Use this.setState to correctly update component state.
+    // Fix: setState is inherited from Component.
     this.setState({ errorInfo });
   }
 
@@ -46,7 +45,7 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
   handleEmergencyReset = async () => {
     if (!confirm("确定要执行紧急重置吗？这将清空所有数据并恢复到初始状态。")) return;
     
-    // Fix: Use this.setState to indicate recovery mode.
+    // Fix: setState is inherited from Component.
     this.setState({ isRecovering: true });
     try {
       // 1. Clear DB
@@ -62,14 +61,14 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
     } catch (e) {
       console.error(e);
       alert("重置失败。");
-      // Fix: Reset recovery state on failure.
+      // Fix: setState is inherited from Component.
       this.setState({ isRecovering: false });
     }
   };
 
   // 尝试只删除最后访问的项目（通常是导致崩溃的那个）
   handleDeleteActiveProject = async () => {
-     // Fix: Use this.setState to indicate recovery mode.
+     // Fix: setState is inherited from Component.
      this.setState({ isRecovering: true });
      try {
         const data = await loadAllData();
@@ -79,19 +78,19 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
            window.location.reload();
         } else {
            alert("无法读取当前工程信息，请尝试【完全重置】。");
-           // Fix: Use this.setState to reset state on error.
+           // Fix: setState is inherited from Component.
            this.setState({ isRecovering: false });
         }
      } catch (e) {
         console.error(e);
         alert("操作失败，请尝试【完全重置】。");
-        // Fix: Use this.setState to reset state on error.
+        // Fix: setState is inherited from Component.
         this.setState({ isRecovering: false });
      }
   };
 
   render() {
-    // Fix: Access state property from this instance.
+    // Fix: state is inherited from Component.
     if (this.state.hasError) {
       return (
         <div className="h-screen w-screen bg-gray-950 flex flex-col items-center justify-center p-8 text-gray-300 font-mono">
@@ -153,7 +152,7 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
       );
     }
 
-    // Fix: Access children from this.props.
+    // Fix: props is inherited from Component.
     return this.props.children;
   }
 }

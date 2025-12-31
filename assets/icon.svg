@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Gradient: Primary Blue to Purple -->
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow Filter for Cyberpunk feel -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Background Squircle (Dark Navy) -->
+  <rect x="0" y="0" width="512" height="512" rx="128" ry="128" fill="#0f172a" />
+  
+  <!-- Subtle Blueprint Grid Background -->
+  <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+    <path d="M 64 0 L 0 0 0 64" fill="none" stroke="#1e293b" stroke-width="2"/>
+  </pattern>
+  <rect width="512" height="512" rx="128" fill="url(#grid)" opacity="0.3" />
+
+  <!-- Main Content Group centered -->
+  <g transform="translate(256, 256)">
+    
+    <!-- Outer Connecting Orbit Rings -->
+    <circle cx="0" cy="0" r="160" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="10 20" opacity="0.5" />
+    <circle cx="0" cy="0" r="120" fill="none" stroke="#334155" stroke-width="4" stroke-dasharray="40 40" opacity="0.8" transform="rotate(45)"/>
+
+    <!-- Connection Lines -->
+    <g stroke="#38bdf8" stroke-width="4" stroke-opacity="0.3" stroke-linecap="round">
+       <line x1="0" y1="0" x2="0" y2="-120" />
+       <line x1="0" y1="0" x2="104" y2="60" />
+       <line x1="0" y1="0" x2="-104" y2="60" />
+    </g>
+
+    <!-- Central Core Node -->
+    <g filter="url(#glow)">
+      <circle cx="0" cy="0" r="45" fill="url(#mainGrad)" />
+      <path d="M -20 -20 L 20 -20 L 20 20 L -20 20 Z" fill="none" stroke="#ffffff" stroke-width="4" stroke-opacity="0.5" transform="rotate(45)"/>
+    </g>
+    
+    <!-- Satellite Nodes -->
+    <g>
+       <!-- Top -->
+       <circle cx="0" cy="-120" r="20" fill="#1e293b" stroke="#38bdf8" stroke-width="6" />
+       <!-- Bottom Right -->
+       <circle cx="104" cy="60" r="20" fill="#1e293b" stroke="#a855f7" stroke-width="6" />
+       <!-- Bottom Left -->
+       <circle cx="-104" cy="60" r="20" fill="#1e293b" stroke="#a855f7" stroke-width="6" />
+    </g>
+    
+    <!-- Fictosphere "F" abstract hint (Optional, kept abstract geometric instead) -->
+  </g>
+</svg>

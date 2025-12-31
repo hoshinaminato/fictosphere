@@ -1,0 +1,67 @@
+name: 🐛 Bug 报告 (Bug Report)
+description: 创建一个报告以帮助我们修复错误
+title: "[Bug]: <请在此简述 Bug>"
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        发现了 Bug？请填写此表单，我们将尽快调查。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 发生了什么错误？
+      placeholder: 比如：点击保存按钮时，页面白屏了...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 我们如何复现这个问题？
+      placeholder: |
+        1. 进入 '...'
+        2. 点击 '....'
+        3. 滚动到 '....'
+        4. 看到错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 正常情况下应该发生什么？
+      placeholder: 应该弹出保存成功的提示，而不是没反应。
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 发生模块
+      options:
+        - 👥 族谱/关系 (Genealogy)
+        - 🗺️ 蓝图/地图 (Blueprint)
+        - 📅 日程/时间轴 (Calendar)
+        - 📖 百科/Wiki
+        - 💾 数据存储/导入导出
+        - 🏳️‍🌈 主题/样式
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 环境信息
+      description: 操作系统 (Windows/Mac/Linux) 或 浏览器版本 (如果是在 Web 运行)。
+      placeholder: Windows 11, Chrome 120...
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 截图或日志
+      description: 如果有控制台报错截图或录屏，请粘贴在此处。

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fictosphere: 关系与剧情系统</title>
+    <!-- Add Favicon -->
+    <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
+    
+    <!-- Tailwind CSS via CDN is kept for simplicity in this shell wrapper -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+            colors: {
+              blueprint: {
+                900: '#0f172a', // Canvas bg
+                800: '#1e293b', // Panel bg
+                700: '#334155', // Panel border
+                500: '#38bdf8', // Primary Line
+                500_20: 'rgba(56, 189, 248, 0.2)', // Grid lines
+                highlight: '#facc15',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #0f172a;
+        color: #e2e8f0;
+        font-family: 'JetBrains Mono', monospace;
+        overflow: hidden;
+      }
+      
+      /* Blueprint Grid Pattern */
+      .blueprint-grid {
+        background-image: 
+          linear-gradient(rgba(56, 189, 248, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(56, 189, 248, 0.1) 1px, transparent 1px);
+        background-size: 40px 40px;
+      }
+
+      .blueprint-grid-small {
+        background-image: 
+          linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+        background-size: 10px 10px;
+      }
+      
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: #1e293b; }
+      ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+      /* Animation for Relationship Flow Lines */
+      @keyframes linkFlow {
+        from { stroke-dashoffset: 20; }
+        to { stroke-dashoffset: 0; }
+      }
+      
+      .flow-line {
+        animation: linkFlow 1s linear infinite;
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "d3": "https://aistudiocdn.com/d3@^7.9.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+name: 🚀 体验优化 (Optimization)
+description: 现有功能能用，但操作不便、逻辑繁琐或视觉效果不佳
+title: "[Optimize]: <请在此简述优化点>"
+labels: ["optimization", "ux"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        现有功能不够好用？请告诉我们要优化哪里！
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: 当前体验
+      description: 目前的操作流程是怎样的？哪里让你觉得繁琐或困惑？
+      placeholder: 例如：每次新建人物后，都要手动去搜索才能添加到关系图中...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 优化建议
+      description: 你期望改成什么样？
+      placeholder: 例如：新建人物后，自动选中该人物并聚焦...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 涉及模块
+      options:
+        - 👥 族谱/关系 (Genealogy)
+        - 🗺️ 蓝图/地图 (Blueprint)
+        - 📅 日程/时间轴 (Calendar)
+        - 📖 百科/Wiki
+        - 🎨 UI/UX 视觉
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图/Mockup (可选)
+      description: 如果有截图能更好地说明当前的问题或预期的效果，请粘贴在这里。

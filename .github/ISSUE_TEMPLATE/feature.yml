@@ -1,0 +1,47 @@
+name: ✨ 功能需求 (Feature Request)
+description: 建议一个 Fictosphere 目前缺失的新功能或能力
+title: "[Feature]: <请在此简述需求>"
+labels: ["enhancement", "feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你提出新功能建议！请尽可能详细地描述，帮助我们理解你的构想。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 痛点描述
+      description: 这个功能是为了解决什么问题？(例如：我想要记录某个人物的习惯，但是找不到地方...)
+      placeholder: 请描述你遇到的限制或缺失的功能...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 建议的解决方案
+      description: 你希望这个功能是什么样子的？
+      placeholder: 我希望在侧边栏增加一个...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 涉及模块
+      description: 这个需求主要涉及哪个功能模块？
+      options:
+        - 👥 族谱/关系 (Genealogy)
+        - 🗺️ 蓝图/地图 (Blueprint)
+        - 📅 日程/时间轴 (Calendar)
+        - 📖 百科/Wiki
+        - ⚙️ 系统/全局 (System)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 其他背景信息
+      description: 有其他的参考图、草图或补充说明吗？

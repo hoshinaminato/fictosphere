@@ -130,29 +130,42 @@ export const PersonEditForm: React.FC<PersonEditFormProps> = ({
             
             {/* Conditional Date Input */}
             <div className="space-y-1">
-               <label className="text-[10px] text-gray-500 uppercase font-bold">
-                  {timeSystem === TimeSystem.REAL ? '出生日期 (年-月-日)' : getTimeLabel()}
-               </label>
+               <div className="flex justify-between items-center mb-1">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold">
+                     {timeSystem === TimeSystem.REAL ? '出生日期 (年-月-日)' : getTimeLabel()}
+                  </label>
+                  {timeSystem === TimeSystem.REAL && (
+                     <label className="flex items-center gap-1 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={editForm.birthIsBC || false}
+                          onChange={e => setEditForm(prev => ({ ...prev, birthIsBC: e.target.checked }))}
+                          className="rounded border-gray-600 bg-gray-900 text-blue-500 w-3 h-3"
+                        />
+                        <span className="text-[10px] text-gray-500">公元前</span>
+                     </label>
+                  )}
+               </div>
                
                {timeSystem === TimeSystem.REAL ? (
                   <div className="flex gap-1">
                      <input 
                        type="text"
-                       className="w-1/2 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center"
+                       className="w-1/2 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center font-mono"
                        value={editForm.birthYear || ''}
                        onChange={e => setEditForm(prev => ({...prev, birthYear: e.target.value}))}
                        placeholder="YYYY"
                      />
                      <input 
                        type="text"
-                       className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center"
+                       className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center font-mono"
                        value={editForm.birthMonth || ''}
                        onChange={e => setEditForm(prev => ({...prev, birthMonth: e.target.value}))}
                        placeholder="MM"
                      />
                      <input 
                        type="text"
-                       className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center"
+                       className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center font-mono"
                        value={editForm.birthDay || ''}
                        onChange={e => setEditForm(prev => ({...prev, birthDay: e.target.value}))}
                        placeholder="DD"

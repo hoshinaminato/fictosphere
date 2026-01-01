@@ -152,9 +152,9 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
      });
   };
 
-  const getSnippet = (text: string, term: string) => {
+  const getSnippet = (text: string, term: string): string | undefined => {
       const idx = text.toLowerCase().indexOf(term);
-      if (idx === -1) return null;
+      if (idx === -1) return undefined;
       const start = Math.max(0, idx - 15);
       const end = Math.min(text.length, idx + term.length + 20);
       return (start > 0 ? "..." : "") + text.substring(start, end) + (end < text.length ? "..." : "");
@@ -167,11 +167,11 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
 
      project.data.nodes.forEach(p => {
          let matchReason = '';
-         let snippet = null;
+         let snippet: string | undefined = undefined;
          if (selectedKeyword.relatedPersonIds?.includes(p.id)) matchReason = 'Explicit Link';
          else if (p.bio?.toLowerCase().includes(term)) { matchReason = 'Bio Mention'; snippet = getSnippet(p.bio || '', term); }
          else if (p.inventory?.some(i => i.toLowerCase().includes(term))) { matchReason = 'Inventory'; const item = p.inventory?.find(i => i.toLowerCase().includes(term)); snippet = item; }
-         if (matchReason) refs.push({ type: 'PERSON', id: p.id, name: p.name, context: matchReason, snippet: snippet || undefined, data: p });
+         if (matchReason) refs.push({ type: 'PERSON', id: p.id, name: p.name, context: matchReason, snippet, data: p });
      });
 
      project.events.forEach(e => {
@@ -179,11 +179,11 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
          const descMatch = e.description?.toLowerCase().includes(term);
          const explicitMatch = e.relatedKeywordIds?.includes(selectedKeyword.id);
          if (titleMatch || descMatch || explicitMatch) {
-             let snippet = null;
+             let snippet: string | undefined = undefined;
              let context = explicitMatch ? '关联词条' : (titleMatch ? 'Title' : 'Description');
              if (descMatch && !snippet) snippet = getSnippet(e.description || '', term);
              else if (!snippet) snippet = e.title;
-             refs.push({ type: 'EVENT', id: e.id, name: e.title, context: context, snippet: snippet || undefined, data: e });
+             refs.push({ type: 'EVENT', id: e.id, name: e.title, context: context, snippet, data: e });
          }
      });
 
@@ -213,7 +213,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
   const handleCreate = () => {
     const newId = Math.random().toString(36).substr(2, 9);
     const defaultCategory: KeywordCategory = activeCategory === 'ALL' ? 'ITEM' : activeCategory;
-    const defaultParent = selectedId || undefined;
+    const defaultParent = selectedId ?? undefined;
     setFormData({ id: newId, name: '新条目', category: defaultCategory, parentId: defaultParent, description: '', tags: [], attachments: [] });
     setSelectedId(newId);
     setIsEditing(true);
@@ -229,7 +229,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
 
   const handleSave = () => {
     if (!formData.name || !formData.category) return;
-    const newKeyword = { id: formData.id!, name: formData.name, category: formData.category as KeywordCategory, parentId: formData.parentId || undefined, description: formData.description || '', tags: formData.tags || [], relatedPersonIds: formData.relatedPersonIds || [], attachments: formData.attachments || [] };
+    const newKeyword = { id: formData.id!, name: formData.name, category: formData.category as KeywordCategory, parentId: formData.parentId ?? undefined, description: formData.description || '', tags: formData.tags || [], relatedPersonIds: formData.relatedPersonIds || [], attachments: formData.attachments || [] };
     let newKeywords = [...keywords];
     const existingIdx = newKeywords.findIndex(k => k.id === newKeyword.id);
     if (existingIdx >= 0) newKeywords[existingIdx] = newKeyword;

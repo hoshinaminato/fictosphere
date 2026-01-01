@@ -143,6 +143,7 @@ export interface Person {
   birthYear?: string;
   birthMonth?: string;
   birthDay?: string;
+  birthIsBC?: boolean; // New: 公元前 flag
   
   // For fictional time systems
   customBirthDate?: string; 
@@ -345,6 +346,8 @@ export interface CalendarEvent {
   // Real Time Fields
   start: string; // ISO String (Used for REAL time)
   end: string; // ISO String
+  startIsBC?: boolean; // New: 公元前 flag for start
+  endIsBC?: boolean;   // New: 公元前 flag for end
   
   // Fictional Time Fields
   displayDate?: string; // Human readable string for non-real time (e.g. "Year 205, Spring")

@@ -84,6 +84,8 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
     endDate: '',
     start: '09:00',
     end: '10:00',
+    startIsBC: false,
+    endIsBC: false,
     displayDate: '', // For non-real time
     sortOrder: 0,
     locationId: '',
@@ -178,6 +180,8 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
        endDate: selectedDate,
        start: '09:00', 
        end: '10:00', 
+       startIsBC: false,
+       endIsBC: false,
        displayDate: '',
        sortOrder: maxOrder + 1,
        locationId: '', 
@@ -195,6 +199,8 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
         endDate: isRealTime ? evt.end.split('T')[0] : '',
         start: isRealTime ? evt.start.split('T')[1].substring(0, 5) : '',
         end: isRealTime ? evt.end.split('T')[1].substring(0, 5) : '',
+        startIsBC: evt.startIsBC || false,
+        endIsBC: evt.endIsBC || false,
         displayDate: evt.displayDate || '',
         sortOrder: evt.sortOrder ?? 0
      });
@@ -297,7 +303,18 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
   // Sort events based on mode
   const sortedEvents = useMemo(() => {
      if (isRealTime) {
-        return [...globalFilteredEvents].sort((a,b) => a.start.localeCompare(b.start));
+        // BC sorting: BC events come first. Among BC, larger year comes earlier?
+        // Let's keep it simple: StartIsBC events come before non-BC.
+        return [...globalFilteredEvents].sort((a,b) => {
+           if (a.startIsBC !== b.startIsBC) {
+              return a.startIsBC ? -1 : 1;
+           }
+           if (a.startIsBC) {
+              // Both BC: Larger year should technically come first in history, but lexicographical split is fine for "simple identification"
+              return b.start.localeCompare(a.start);
+           }
+           return a.start.localeCompare(b.start);
+        });
      } else {
         // Sequence Mode: Sort by sortOrder. Fallback to array index logic if sortOrder is missing (legacy)
         return [...globalFilteredEvents].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
@@ -308,7 +325,8 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
     isRealTime ? globalFilteredEvents.filter(e => {
        const dayStart = `${selectedDate}T00:00:00`;
        const dayEnd = `${selectedDate}T23:59:59`;
-       return e.start <= dayEnd && e.end >= dayStart;
+       // Simple check: Only show Non-BC events in the modern grid
+       return !e.startIsBC && e.start <= dayEnd && e.end >= dayStart;
     }) : [],
   [globalFilteredEvents, selectedDate, isRealTime]);
 
@@ -318,7 +336,7 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
   }, [searchQuery, sortedEvents]);
 
   const handleSearchSelect = (evt: CalendarEvent) => {
-      if (isRealTime) {
+      if (isRealTime && !evt.startIsBC) {
          setSelectedDate(evt.start.split('T')[0]);
          setCurrentYear(parseInt(evt.start.split('-')[0]));
       }
@@ -350,8 +368,11 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
     if (!isRealTime) return new Map();
     const map = new Map<string, number>();
     globalFilteredEvents.forEach(e => {
-        const startDay = e.start.split('T')[0];
-        map.set(startDay, (map.get(startDay) || 0) + 1);
+        // Only map non-BC events to the grid
+        if (!e.startIsBC) {
+           const startDay = e.start.split('T')[0];
+           map.set(startDay, (map.get(startDay) || 0) + 1);
+        }
     });
     return map;
   }, [globalFilteredEvents, isRealTime]);
@@ -369,7 +390,7 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
        }
        fullStart = `${formData.startDate}T${formData.start}:00`;
        fullEnd = `${formData.endDate}T${formData.end}:00`;
-       if (fullEnd < fullStart) {
+       if (!formData.startIsBC && !formData.endIsBC && fullEnd < fullStart) {
            alert("结束时间不能早于开始时间");
            return;
        }
@@ -385,6 +406,8 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
        description: formData.description || '',
        start: fullStart,
        end: fullEnd,
+       startIsBC: formData.startIsBC || false,
+       endIsBC: formData.endIsBC || false,
        locationId: formData.locationId,
        participantIds: formData.participantIds || [],
        relatedKeywordIds: formData.relatedKeywordIds || [],
@@ -401,7 +424,7 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
     } else {
        onAddEvent(payload);
        setViewState('IDLE');
-       if (isRealTime) setSelectedDate(formData.startDate || selectedDate);
+       if (isRealTime && !payload.startIsBC) setSelectedDate(formData.startDate || selectedDate);
     }
   };
 
@@ -455,7 +478,7 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
      setDraggedEventId(null);
   };
 
-  // --- Insert from Sidebar Logic ---
+  // --- Insert from Sidebar Sidebar Logic ---
   const handleInsert = (insertIndex: number) => {
       if (selectedMarkedIds.length === 0) return;
       saveHistory();
@@ -622,11 +645,11 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
   };
 
   const renderTimeline = () => {
-    // Only real time
-    const sorted = [...globalFilteredEvents].sort((a, b) => a.start.localeCompare(b.start));
+    // Already sorted by sortedEvents (respects BC)
     const groups: { [key: string]: CalendarEvent[] } = {};
-    sorted.forEach(e => {
-        const key = e.start.substring(0, 7); // YYYY-MM
+    sortedEvents.forEach(e => {
+        const isBC = e.startIsBC;
+        const key = `${isBC ? '公元前 ' : ''}${e.start.substring(0, 7)}`; // YYYY-MM
         if(!groups[key]) groups[key] = [];
         groups[key].push(e);
     });
@@ -635,7 +658,7 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
         <div className="flex-1 overflow-y-auto p-8 relative">
            <div className={`absolute left-[30px] md:left-1/2 top-0 bottom-0 w-0.5 ${theme === 'INK' ? 'bg-gray-300' : 'bg-gray-800'}`} />
            <div className="max-w-4xl mx-auto space-y-12">
-               {Object.keys(groups).sort().map(monthKey => (
+               {Object.keys(groups).map(monthKey => (
                   <div key={monthKey} className="relative">
                       <div className="flex justify-start md:justify-center mb-6 pl-[60px] md:pl-0">
                          <div className={`px-4 py-1 rounded-full border text-sm font-bold shadow-lg z-10 
@@ -663,7 +686,7 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
                                           className={`p-4 rounded-xl cursor-pointer transition-all ${isLeft ? 'md:pr-6' : 'md:pl-6'} ${cardClass}`}
                                         >
                                             <div className={`text-xs font-mono mb-1 ${isLeft ? 'md:flex-row-reverse' : ''} flex items-center gap-2 ${theme === 'INK' ? 'text-gray-600' : 'text-blue-500'}`}>
-                                               <span className="font-bold text-lg">{dateNum}日</span>
+                                               <span className="font-bold text-lg">{evt.startIsBC ? '公元前 ' : ''}{dateNum}日</span>
                                                <span className="opacity-70">{evt.start.split('T')[1].substring(0,5)}</span>
                                             </div>
                                             <h3 className={`font-bold text-lg mb-1 ${theme === 'INK' ? 'text-black' : 'text-white'}`}>{evt.title}</h3>
@@ -729,12 +752,11 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
                  const d = i + 1;
                  const dateStr = `${y}-${m.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
                  
-                 // Get Events overlapping this day
+                 // Get Events overlapping this day (BC events are excluded from standard day grid as they don't match modern A.D. year)
                  const dayStart = `${dateStr}T00:00:00`;
                  const dayEnd = `${dateStr}T23:59:59`;
                  
-                 // Use globalFilteredEvents to respect search filters
-                 const dayEvents = globalFilteredEvents.filter(e => e.start < dayEnd && e.end > dayStart);
+                 const dayEvents = globalFilteredEvents.filter(e => !e.startIsBC && e.start < dayEnd && e.end > dayStart);
                  const lanes = computeLanes(dayEvents);
                  const rowHeight = Math.max(48, lanes.length * 28 + 12);
                  const isSelected = dateStr === selectedDate;
@@ -1242,7 +1264,7 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
                                    >
                                       <div className="text-xs font-bold text-gray-300 truncate">{evt.title}</div>
                                       <div className="text-[10px] text-gray-500 flex justify-between w-full">
-                                         <span>{isRealTime ? evt.start.split('T')[0] : (evt.displayDate || 'N/A')}</span>
+                                         <span>{evt.startIsBC ? '公元前 ' : ''}{isRealTime ? evt.start.split('T')[0] : (evt.displayDate || 'N/A')}</span>
                                          <span>{getEventLocName(evt.locationId)}</span>
                                       </div>
                                    </button>
@@ -1294,12 +1316,13 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
                            {isRealTime ? (
                               <>
                                  <span className="bg-blue-500/20 px-2 py-0.5 rounded border border-blue-500/30 text-blue-300">
-                                   {selectedEvent.start.split('T')[0]}
+                                   {selectedEvent.startIsBC ? '公元前 ' : ''}{selectedEvent.start.split('T')[0]}
                                  </span>
                                  <span className="flex items-center gap-1 opacity-70 ml-2">
                                     <Clock size={14}/> 
                                     {selectedEvent.start.split('T')[1].substring(0,5)}
                                  </span>
+                                 {selectedEvent.endIsBC && <span className="text-[10px] opacity-50 ml-1"> ~ 公元前 {selectedEvent.end.split('T')[0]}</span>}
                               </>
                            ) : (
                               <span className="bg-green-500/20 px-3 py-1 rounded border border-green-500/30 text-green-300 font-bold">
@@ -1430,17 +1453,26 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
                                   <label className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1">
                                      <Clock size={12}/> 开始时间 (Start)
                                   </label>
+                                  <label className="flex items-center gap-1 cursor-pointer">
+                                     <input 
+                                       type="checkbox" 
+                                       checked={formData.startIsBC || false}
+                                       onChange={e => setFormData({ ...formData, startIsBC: e.target.checked })}
+                                       className="rounded border-gray-600 bg-gray-900 text-blue-500 w-3 h-3"
+                                     />
+                                     <span className="text-[10px] text-gray-500">公元前</span>
+                                  </label>
                               </div>
                               <div className="space-y-2">
                                  <input 
                                     type="date" 
-                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm"
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm font-mono"
                                     value={formData.startDate}
                                     onChange={e => setFormData({...formData, startDate: e.target.value})}
                                  />
                                  <input 
                                     type="time" 
-                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm"
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm font-mono"
                                     value={formData.start}
                                     onChange={e => setFormData({...formData, start: e.target.value})}
                                  />
@@ -1451,17 +1483,26 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({
                                   <label className="text-xs font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1">
                                      <Clock size={12}/> 结束时间 (End)
                                   </label>
+                                  <label className="flex items-center gap-1 cursor-pointer">
+                                     <input 
+                                       type="checkbox" 
+                                       checked={formData.endIsBC || false}
+                                       onChange={e => setFormData({ ...formData, endIsBC: e.target.checked })}
+                                       className="rounded border-gray-600 bg-gray-900 text-blue-500 w-3 h-3"
+                                     />
+                                     <span className="text-[10px] text-gray-500">公元前</span>
+                                  </label>
                               </div>
                               <div className="space-y-2">
                                  <input 
                                     type="date" 
-                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm"
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm font-mono"
                                     value={formData.endDate}
                                     onChange={e => setFormData({...formData, endDate: e.target.value})}
                                  />
                                  <input 
                                     type="time" 
-                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm"
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-sm font-mono"
                                     value={formData.end}
                                     onChange={e => setFormData({...formData, end: e.target.value})}
                                  />

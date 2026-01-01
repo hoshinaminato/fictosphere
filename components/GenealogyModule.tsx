@@ -128,6 +128,7 @@ export const GenealogyModule: React.FC<GenealogyModuleProps> = ({
     setSelectedPersonId(undefined);
   };
   
+  // 修复此处参数类型：由 RelationType 改为 string，以匹配 Sidebar 组件的定义
   const handleAddRelation = (s: string, t: string, type: string) => {
      const newLink: Relationship = {
         id: Math.random().toString(36).substr(2,9),

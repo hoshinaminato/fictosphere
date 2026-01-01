@@ -148,6 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     birthYear: '',
     birthMonth: '',
     birthDay: '',
+    birthIsBC: false,
     customBirthDate: '',
     attributes: []
   });
@@ -259,7 +260,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const parseDateCompatibility = (person: Person | null) => {
      if (!person) return {};
      
-     let { birthYear, birthMonth, birthDay, birthDate } = person;
+     let { birthYear, birthMonth, birthDay, birthDate, birthIsBC } = person;
      
      // If newer fields are missing but we have a legacy string, try to parse it
      if ((!birthYear && !birthMonth && !birthDay) && birthDate) {
@@ -270,7 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (parts.length >= 3) birthDay = parts[2];
      }
      
-     return { ...person, birthYear, birthMonth, birthDay };
+     return { ...person, birthYear, birthMonth, birthDay, birthIsBC };
   };
 
   // Reset state when selection changes
@@ -394,6 +395,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         birthYear: '',
         birthMonth: '',
         birthDay: '',
+        birthIsBC: false,
         customBirthDate: '',
         attributes: []
       });
@@ -1033,28 +1035,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
                    
                    {/* Date Input based on TimeSystem */}
                    {timeSystem === TimeSystem.REAL ? (
-                      <div className="flex gap-1">
-                         <input 
-                           type="text"
-                           className="w-1/2 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center"
-                           value={newPersonForm.birthYear}
-                           onChange={e => setNewPersonForm({...newPersonForm, birthYear: e.target.value})}
-                           placeholder="年 (YYYY)"
-                         />
-                         <input 
-                           type="text"
-                           className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center"
-                           value={newPersonForm.birthMonth}
-                           onChange={e => setNewPersonForm({...newPersonForm, birthMonth: e.target.value})}
-                           placeholder="月"
-                         />
-                         <input 
-                           type="text"
-                           className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center"
-                           value={newPersonForm.birthDay}
-                           onChange={e => setNewPersonForm({...newPersonForm, birthDay: e.target.value})}
-                           placeholder="日"
-                         />
+                      <div className="space-y-2">
+                         <div className="flex gap-1">
+                            <input 
+                              type="text"
+                              className="w-1/2 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center font-mono"
+                              value={newPersonForm.birthYear}
+                              onChange={e => setNewPersonForm({...newPersonForm, birthYear: e.target.value})}
+                              placeholder="年 (YYYY)"
+                            />
+                            <input 
+                              type="text"
+                              className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center font-mono"
+                              value={newPersonForm.birthMonth}
+                              onChange={e => setNewPersonForm({...newPersonForm, birthMonth: e.target.value})}
+                              placeholder="月"
+                            />
+                            <input 
+                              type="text"
+                              className="w-1/4 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-center font-mono"
+                              value={newPersonForm.birthDay}
+                              onChange={e => setNewPersonForm({...newPersonForm, birthDay: e.target.value})}
+                              placeholder="日"
+                            />
+                         </div>
+                         <label className="flex items-center gap-2 cursor-pointer ml-1">
+                            <input 
+                               type="checkbox" 
+                               checked={newPersonForm.birthIsBC}
+                               onChange={e => setNewPersonForm({...newPersonForm, birthIsBC: e.target.checked})}
+                               className="rounded border-gray-700 bg-gray-900 text-blue-500 focus:ring-0"
+                            />
+                            <span className="text-xs text-gray-500">公元前 (B.C.)</span>
+                         </label>
                       </div>
                    ) : timeSystem !== TimeSystem.NONE ? (
                       <input 
@@ -1176,7 +1189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <span className="text-sm text-gray-200 font-mono">
                            {timeSystem === TimeSystem.REAL ? (
                               selectedPerson.birthYear 
-                                 ? `${selectedPerson.birthYear}年 ${selectedPerson.birthMonth || '?'}月 ${selectedPerson.birthDay || '?'}日` 
+                                 ? `${selectedPerson.birthIsBC ? '公元前 ' : ''}${selectedPerson.birthYear}年 ${selectedPerson.birthMonth || '?'}月 ${selectedPerson.birthDay || '?'}日` 
                                  : (selectedPerson.birthDate || '未知')
                            ) : (
                               selectedPerson.customBirthDate || '未知'
@@ -1591,7 +1604,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                      <span className="text-gray-200">
                                         {timeSystem === TimeSystem.REAL ? (
                                            selectedPerson.birthYear 
-                                              ? `${selectedPerson.birthYear}年 ${selectedPerson.birthMonth || '?'}月 ${selectedPerson.birthDay || '?'}日` 
+                                              ? `${selectedPerson.birthIsBC ? '公元前 ' : ''}${selectedPerson.birthYear}年 ${selectedPerson.birthMonth || '?'}月 ${selectedPerson.birthDay || '?'}日` 
                                               : (selectedPerson.birthDate || '未知')
                                         ) : (
                                            selectedPerson.customBirthDate || '未知'

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 import { 
   Simulation, 
@@ -81,7 +82,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   const [isExporting, setIsExporting] = useState(false);
   
-  // Fix: Explicitly type Set generic and provide generic to new Set()
+  // Explicitly type Set generic and provide generic to new Set()
   const [multiSelection, setMultiSelection] = useState<Set<string>>(new Set<string>());
   const multiSelectionRef = useRef<Set<string>>(new Set<string>()); 
   const isDragMovedRef = useRef(false);
@@ -120,13 +121,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     multiSelectionRef.current = multiSelection;
   }, [multiSelection]);
 
-  // Fix: Narrow selectedPersonId and use strictly typed callback to avoid "unknown" parameter errors in prev.has()
+  // Fix: Explicitly type the updater function return to resolve 'unknown' type assignment issues during state updates.
   useEffect(() => {
     if (typeof selectedPersonId === 'string') {
-       const id: string = selectedPersonId;
-       setMultiSelection((prev: Set<string>) => {
-          if (prev.size > 1 && prev.has(id)) return prev;
-          return new Set<string>([id]);
+       const selectedId: string = selectedPersonId;
+       setMultiSelection((prev: Set<string>): Set<string> => {
+          if (prev.size > 1 && prev.has(selectedId)) return prev;
+          return new Set<string>([selectedId]);
        });
     }
   }, [selectedPersonId]);
@@ -530,7 +531,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       .on('drag', (event, d) => {
         isDragMovedRef.current = true; const dx = event.dx; const dy = event.dy; const curSel = multiSelectionRef.current;
         if (curSel.has(d.id)) simulation.nodes().forEach(n => { if (curSel.has(n.id)) { if (n.fx != null) n.fx += dx; if (n.fy != null) n.fy += dy; } });
-        else { if (d.fx != null) d.fx += dx; if (d.fy != null) d.fy += dy; }
+        else { if (d.fx != null) d.fx != null ? d.fx += dx : d.fx = d.x + dx; if (d.fy != null) d.fy != null ? d.fy += dy : d.fy = d.y + dy; }
       })
       .on('end', (event, d) => {
         if (!event.active) simulation.alphaTarget(0);

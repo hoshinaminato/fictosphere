@@ -121,13 +121,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     multiSelectionRef.current = multiSelection;
   }, [multiSelection]);
 
-  // Fix: Explicitly type the updater function return to resolve 'unknown' type assignment issues during state updates.
+  // Fix: Explicitly narrow selectedPersonId to string and explicitly type the callback parameter 'prev' to resolve 'unknown' type issues.
   useEffect(() => {
     if (typeof selectedPersonId === 'string') {
-       const selectedId: string = selectedPersonId;
-       setMultiSelection((prev: Set<string>): Set<string> => {
-          if (prev.size > 1 && prev.has(selectedId)) return prev;
-          return new Set<string>([selectedId]);
+       const sid: string = selectedPersonId;
+       setMultiSelection((prev: Set<string>) => {
+          if (prev.size > 1 && prev.has(sid)) return prev;
+          return new Set<string>([sid]);
        });
     }
   }, [selectedPersonId]);

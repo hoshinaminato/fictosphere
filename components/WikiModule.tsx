@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { Project, Keyword, KeywordCategory, KeywordCategoryLabels } from '../types';
-import { Book, Search, Plus, Tag, Edit3, Trash2, BookOpen, Scroll, Shield, Zap, MapPin, Box, Check, X, User, Calendar, Link, UserPlus, Quote, AlertTriangle, Paperclip, ChevronRight, ChevronDown, CornerDownRight, FolderTree, GitBranch, FileText } from 'lucide-react';
+import { Book, Search, Plus, Tag, Edit3, Trash2, BookOpen, Scroll, Shield, Zap, MapPin, Box, Check, X, User, Calendar, Link, UserPlus, Quote, AlertTriangle, Paperclip, ChevronRight, ChevronDown, CornerDownRight, FolderTree, GitBranch, FileText, MessageSquare, Type } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { AttachmentManager } from './AttachmentManager';
 import { WikiTreeCanvas } from './WikiTreeCanvas';
+import { WikiRichText } from './WikiRichText';
 
 interface WikiModuleProps {
   project: Project;
@@ -103,10 +104,14 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Keyword>>({});
 
+  // 阅读偏好设置
+  const [showRuby, setShowRuby] = useState(true);
+  const [showNotes, setShowNotes] = useState(true);
+  const [noteLayout, setNoteLayout] = useState<'HOVER' | 'SIDE'>('SIDE');
+
   const keywords = project.keywords || [];
   const selectedKeyword = keywords.find(k => k.id === selectedId);
 
-  // 寻找当前选中词条的最顶层祖先（用于树状图根节点）
   const rootAncestor = useMemo(() => {
      if (!selectedKeyword) return null;
      let curr = selectedKeyword;
@@ -127,7 +132,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
     });
   }, [keywords, searchQuery, activeCategory]);
 
-  const isTreeView = !searchQuery && activeCategory === 'ALL';
+  const isTreeViewList = !searchQuery && activeCategory === 'ALL';
   
   const rootKeywords = useMemo(() => {
      return keywords.filter(k => !k.parentId).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
@@ -152,14 +157,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
      });
   };
 
-  const getSnippet = (text: string, term: string): string | undefined => {
-      const idx = text.toLowerCase().indexOf(term);
-      if (idx === -1) return undefined;
-      const start = Math.max(0, idx - 15);
-      const end = Math.min(text.length, idx + term.length + 20);
-      return (start > 0 ? "..." : "") + text.substring(start, end) + (end < text.length ? "..." : "");
-  };
-
   const references = useMemo(() => {
      if (!selectedKeyword) return [];
      const term = selectedKeyword.name.toLowerCase();
@@ -169,38 +166,16 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
          let matchReason = '';
          let snippet: string | undefined = undefined;
          if (selectedKeyword.relatedPersonIds?.includes(p.id)) matchReason = 'Explicit Link';
-         else if (p.bio?.toLowerCase().includes(term)) { matchReason = 'Bio Mention'; snippet = getSnippet(p.bio || '', term); }
-         else if (p.inventory?.some(i => i.toLowerCase().includes(term))) { matchReason = 'Inventory'; const item = p.inventory?.find(i => i.toLowerCase().includes(term)); snippet = item; }
+         else if (p.bio?.toLowerCase().includes(term)) { matchReason = 'Bio Mention'; snippet = p.bio?.substring(0, 50) + "..."; }
          if (matchReason) refs.push({ type: 'PERSON', id: p.id, name: p.name, context: matchReason, snippet, data: p });
      });
 
      project.events.forEach(e => {
-         const titleMatch = e.title.toLowerCase().includes(term);
-         const descMatch = e.description?.toLowerCase().includes(term);
-         const explicitMatch = e.relatedKeywordIds?.includes(selectedKeyword.id);
-         if (titleMatch || descMatch || explicitMatch) {
-             let snippet: string | undefined = undefined;
-             let context = explicitMatch ? '关联词条' : (titleMatch ? 'Title' : 'Description');
-             if (descMatch && !snippet) snippet = getSnippet(e.description || '', term);
-             else if (!snippet) snippet = e.title;
-             refs.push({ type: 'EVENT', id: e.id, name: e.title, context: context, snippet, data: e });
+         if (e.title.toLowerCase().includes(term) || e.description?.toLowerCase().includes(term) || e.relatedKeywordIds?.includes(selectedKeyword.id)) {
+             refs.push({ type: 'EVENT', id: e.id, name: e.title, context: 'Timeline', snippet: e.description?.substring(0, 50), data: e });
          }
      });
 
-     project.world.nodes.forEach(node => {
-        if (node.name.toLowerCase().includes(term) || node.description?.toLowerCase().includes(term)) {
-           const descMatch = node.description?.toLowerCase().includes(term);
-           refs.push({ type: 'LOCATION', id: node.id, name: node.name, context: 'Location Name/Desc', snippet: descMatch ? getSnippet(node.description || '', term) : node.name, data: node });
-        }
-        node.floors.forEach(floor => {
-           floor.rooms.forEach(room => {
-              if (room.name.toLowerCase().includes(term) || room.description?.toLowerCase().includes(term)) {
-                 const descMatch = room.description?.toLowerCase().includes(term);
-                 refs.push({ type: 'LOCATION', id: room.id, name: `${node.name} - ${room.name}`, context: 'Room Name/Desc', snippet: descMatch ? getSnippet(room.description || '', term) : room.name, data: room });
-              }
-           });
-        });
-     });
      return refs;
   }, [selectedKeyword, project]);
 
@@ -229,7 +204,16 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
 
   const handleSave = () => {
     if (!formData.name || !formData.category) return;
-    const newKeyword = { id: formData.id!, name: formData.name, category: formData.category as KeywordCategory, parentId: formData.parentId ?? undefined, description: formData.description || '', tags: formData.tags || [], relatedPersonIds: formData.relatedPersonIds || [], attachments: formData.attachments || [] };
+    const newKeyword = { 
+      id: formData.id!, 
+      name: formData.name, 
+      category: formData.category as KeywordCategory, 
+      parentId: formData.parentId ?? undefined, 
+      description: formData.description || '', 
+      tags: formData.tags || [], 
+      relatedPersonIds: formData.relatedPersonIds || [], 
+      attachments: formData.attachments || [] 
+    };
     let newKeywords = [...keywords];
     const existingIdx = newKeywords.findIndex(k => k.id === newKeyword.id);
     if (existingIdx >= 0) newKeywords[existingIdx] = newKeyword;
@@ -253,14 +237,29 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
      }
   };
 
-  const handleAddRelatedPerson = (personId: string) => {
-     const current = formData.relatedPersonIds || [];
-     if (!current.includes(personId)) setFormData({ ...formData, relatedPersonIds: [...current, personId] });
-  };
+  const insertSyntax = (syntaxType: 'ruby' | 'note') => {
+    const textarea = document.getElementById('wiki-editor-textarea') as HTMLTextAreaElement;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selection = text.substring(start, end);
+    
+    let replacement = '';
+    if (syntaxType === 'ruby') {
+      replacement = `[${selection || '文字'}]{ruby:注音}`;
+    } else {
+      replacement = `[${selection || '文字或图片地址'}]{note:注释内容}`;
+    }
 
-  const handleRemoveRelatedPerson = (personId: string) => {
-     const current = formData.relatedPersonIds || [];
-     setFormData({ ...formData, relatedPersonIds: current.filter(id => id !== personId) });
+    const newValue = text.substring(0, start) + replacement + text.substring(end);
+    setFormData({ ...formData, description: newValue });
+    
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + (syntaxType === 'ruby' ? replacement.length - 3 : replacement.length - 5);
+      textarea.setSelectionRange(newPos, newPos + (syntaxType === 'ruby' ? 2 : 4));
+    }, 0);
   };
 
   const getCategoryIcon = (cat: KeywordCategory) => {
@@ -274,19 +273,8 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
     }
   };
 
-  const personOptions = useMemo(() => project.data.nodes.map(p => ({ label: p.name, value: p.id, group: p.familyId })).sort((a, b) => a.label.localeCompare(b.label, 'zh-CN')), [project.data.nodes]);
-
-  const parentOptions = useMemo(() => {
-     if (!formData.id) return [];
-     const getDescendants = (id: string): string[] => {
-        const children = keywords.filter(k => k.parentId === id);
-        let results: string[] = children.map(c => c.id);
-        children.forEach(c => { results = [...results, ...getDescendants(c.id)]; });
-        return results;
-     };
-     const invalidIds = new Set([formData.id, ...getDescendants(formData.id!)]);
-     return keywords.filter(k => !invalidIds.has(k.id)).map(k => ({ label: k.name, value: k.id, group: KeywordCategoryLabels[k.category] })).sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
-  }, [keywords, formData.id]);
+  const personOptions = useMemo(() => project.data.nodes.map(p => ({ label: p.name, value: p.id, group: p.familyId })), [project.data.nodes]);
+  const parentOptions = useMemo(() => keywords.filter(k => k.id !== formData.id).map(k => ({ label: k.name, value: k.id, group: KeywordCategoryLabels[k.category] })), [keywords, formData.id]);
 
   return (
     <div className="flex h-full bg-gray-950 text-slate-300">
@@ -308,7 +296,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
             ))}
          </div>
          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {isTreeView ? rootKeywords.map(root => (
+            {isTreeViewList ? rootKeywords.map(root => (
                    <WikiTreeNode key={root.id} keyword={root} allKeywords={keywords} selectedId={selectedId} onSelect={handleSelect} level={0} expandedIds={expandedIds} toggleExpand={toggleExpand} />
                 )) : filteredKeywords.map(k => (
                    <div key={k.id} onClick={() => handleSelect(k.id)} className={`p-3 rounded-lg cursor-pointer border flex items-center gap-3 transition-all ${selectedId === k.id ? 'bg-blue-900/20 border-blue-500/50' : 'bg-transparent border-transparent hover:bg-gray-800'}`}>
@@ -319,7 +307,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                       </div>
                    </div>
                 ))}
-            {(!isTreeView && filteredKeywords.length === 0) || (isTreeView && rootKeywords.length === 0) ? ( <div className="text-center py-8 text-gray-600 text-sm">{searchQuery ? '无匹配结果' : '暂无词条'}</div> ) : null}
          </div>
          <div className="p-4 border-t border-gray-800">
             <button onClick={handleCreate} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-blue-900/20"><Plus size={16} /> 新建词条</button>
@@ -328,7 +315,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
 
       <div className="flex-1 bg-gray-950 flex flex-col relative overflow-hidden">
          {selectedKeyword && !isEditing && (
-            <div className="h-14 border-b border-gray-800 bg-gray-900/50 flex items-center justify-between px-6 shrink-0 z-10">
+            <div className="h-14 border-b border-gray-800 bg-gray-900/50 flex items-center justify-between px-6 shrink-0 z-30">
                <div className="flex bg-gray-800 rounded p-1 border border-gray-700 shadow-inner">
                   <button 
                     onClick={() => setShowTreeView(false)}
@@ -343,6 +330,32 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                      <GitBranch size={14}/> 层级树状图
                   </button>
                </div>
+
+               <div className="flex items-center gap-4 bg-gray-800/80 px-3 py-1 rounded-lg border border-gray-700">
+                  <button 
+                    onClick={() => setShowRuby(!showRuby)}
+                    className={`flex items-center gap-1 text-xs font-bold transition-colors ${showRuby ? 'text-orange-400' : 'text-gray-500'}`}
+                    title="注音显隐"
+                  >
+                    <Type size={14} /> 注音{showRuby ? '开' : '关'}
+                  </button>
+                  <div className="w-px h-4 bg-gray-700" />
+                  <button 
+                    onClick={() => setShowNotes(!showNotes)}
+                    className={`flex items-center gap-1 text-xs font-bold transition-colors ${showNotes ? 'text-blue-400' : 'text-gray-500'}`}
+                    title="注释显隐"
+                  >
+                    <MessageSquare size={14} /> 注释{showNotes ? '开' : '关'}
+                  </button>
+                  {showNotes && (
+                    <button 
+                      onClick={() => setNoteLayout(noteLayout === 'HOVER' ? 'SIDE' : 'HOVER')}
+                      className="ml-2 text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-0.5 rounded text-gray-300"
+                    >
+                      {noteLayout === 'SIDE' ? '侧栏模式' : '悬浮模式'}
+                    </button>
+                  )}
+               </div>
                
                <div className="flex gap-2">
                   <button onClick={handleEdit} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-blue-400 border border-gray-700 text-xs font-bold flex items-center gap-1"><Edit3 size={14}/> 编辑</button>
@@ -355,18 +368,43 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
          {isEditing ? (
             <div className="h-full overflow-y-auto p-4 md:p-8">
                <div className="max-w-3xl mx-auto bg-gray-900 border border-gray-800 rounded-xl p-8 shadow-2xl animate-fade-in mb-20">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><Edit3 size={20} className="text-blue-500"/> 编辑词条</h3>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><Edit3 size={20} className="text-blue-500"/> 编辑词条</h3>
+                    <div className="flex gap-2">
+                       <button 
+                         onClick={() => insertSyntax('ruby')}
+                         className="px-3 py-1 bg-gray-800 hover:bg-orange-900/30 text-orange-400 border border-gray-700 rounded text-xs font-bold flex items-center gap-1"
+                       >
+                         <Type size={12}/> 添加注音
+                       </button>
+                       <button 
+                         onClick={() => insertSyntax('note')}
+                         className="px-3 py-1 bg-gray-800 hover:bg-blue-900/30 text-blue-400 border border-gray-700 rounded text-xs font-bold flex items-center gap-1"
+                       >
+                         <MessageSquare size={12}/> 添加注释
+                       </button>
+                    </div>
+                  </div>
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
                         <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">名称</label><input className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white focus:border-blue-500 outline-none" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="词条名称" /></div>
                         <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">分类</label><select className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white focus:border-blue-500 outline-none" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as KeywordCategory })}>{Object.entries(KeywordCategoryLabels).map(([key, label]) => ( <option key={key} value={key}>{label}</option> ))}</select></div>
                      </div>
-                     <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1"><FolderTree size={12} /> 所属父词条 (层级结构)</label><SearchableSelect options={parentOptions} value={formData.parentId || ''} onChange={(val) => setFormData({ ...formData, parentId: val || undefined })} placeholder="选择父节点 (可选，如：某学校 ->某班级)" darker={true} /><div className="text-[10px] text-gray-600 mt-1">设置父节点可以将此词条归档在另一个词条下。适用于“组织架构”、“地理层级”等场景。</div></div>
-                     <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">详细描述</label><textarea className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white h-48 focus:border-blue-500 outline-none resize-none" value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="输入详细的设定、历史、功能等..." /></div>
+                     <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1"><FolderTree size={12} /> 所属父词条 (层级结构)</label><SearchableSelect options={parentOptions} value={formData.parentId || ''} onChange={(val) => setFormData({ ...formData, parentId: val || undefined })} placeholder="选择父节点 (可选)" darker={true} /></div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-500 uppercase mb-2">详细描述</label>
+                       <textarea 
+                          id="wiki-editor-textarea"
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white h-48 focus:border-blue-500 outline-none resize-none font-mono text-sm leading-relaxed" 
+                          value={formData.description || ''} 
+                          onChange={e => setFormData({ ...formData, description: e.target.value })} 
+                          placeholder="输入设定... 可以使用 [文字]{ruby:注音} 或 [文字]{note:内容} 格式。" 
+                       />
+                       <div className="text-[10px] text-gray-500 mt-1 italic">语法提示：[文字]{'{'}ruby:注音{'}'}、[文字/图片URL]{'{'}note:注释{'}'}。注释内容中也可包含图片 URL。</div>
+                     </div>
                      <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">标签 (逗号分隔)</label><input className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white focus:border-blue-500 outline-none" value={(formData.tags || []).join(', ')} onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} placeholder="传说, 武器, 稀有..." /></div>
-                     <div className="bg-gray-800/30 p-4 rounded border border-gray-800"><label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><UserPlus size={12}/> 关联人物 (Explicit Links)</label><div className="flex flex-wrap gap-2 mb-3">{(formData.relatedPersonIds || []).map(pid => { const person = project.data.nodes.find(p => p.id === pid); return ( <div key={pid} className="bg-blue-900/30 text-blue-300 text-xs px-2 py-1 rounded border border-blue-800 flex items-center gap-1">{person?.name || 'Unknown'}<button onClick={() => handleRemoveRelatedPerson(pid)} className="hover:text-white"><X size={12}/></button></div> ); })} {(formData.relatedPersonIds || []).length === 0 && ( <span className="text-gray-600 text-xs italic">暂无手动关联</span> )}</div><div><SearchableSelect options={personOptions} value="" onChange={handleAddRelatedPerson} placeholder="添加人物关联..." darker={true} /></div></div>
-                     <div className="bg-gray-800/30 p-4 rounded border border-gray-800"><AttachmentManager attachments={formData.attachments || []} onUpdate={(atts) => setFormData({ ...formData, attachments: atts })} /></div>
-                     <div className="flex gap-4 pt-4"><button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded font-bold">保存</button><button onClick={() => { setIsEditing(false); if(selectedId && !keywords.find(k=>k.id===selectedId)) setSelectedId(null); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded">取消</button></div>
+                     <div className="bg-gray-800/30 p-4 rounded border border-gray-800"><label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><UserPlus size={12}/> 关联人物</label><div className="flex flex-wrap gap-2 mb-3">{(formData.relatedPersonIds || []).map(pid => { const person = project.data.nodes.find(p => p.id === pid); return ( <div key={pid} className="bg-blue-900/30 text-blue-300 text-xs px-2 py-1 rounded border border-blue-800 flex items-center gap-1">{person?.name || 'Unknown'}<button onClick={() => { const current = formData.relatedPersonIds || []; setFormData({ ...formData, relatedPersonIds: current.filter(id => id !== pid) }); }} className="hover:text-white"><X size={12}/></button></div> ); })}</div><div><SearchableSelect options={personOptions} value="" onChange={(pid) => { const current = formData.relatedPersonIds || []; if (!current.includes(pid)) setFormData({ ...formData, relatedPersonIds: [...current, pid] }); }} placeholder="添加人物关联..." darker={true} /></div></div>
+                     <div className="flex gap-4 pt-4"><button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded font-bold">保存</button><button onClick={() => setIsEditing(false)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded">取消</button></div>
                   </div>
                </div>
             </div>
@@ -381,66 +419,77 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                   height={window.innerHeight - 104}
                />
             ) : (
-            <div className="p-8 overflow-y-auto h-full">
-               <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-                  {selectedKeyword.parentId && (
-                     <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                        <FolderTree size={12}/>
-                        {(() => {
-                           const path = [];
-                           let curr = keywords.find(k => k.id === selectedKeyword.parentId);
-                           while(curr) { path.unshift(curr); curr = keywords.find(k => k.id === curr!.parentId); }
-                           return path.map((p, i) => ( <React.Fragment key={p.id}><button onClick={() => handleSelect(p.id)} className="hover:text-blue-400 hover:underline">{p.name}</button><ChevronRight size={10}/></React.Fragment> ));
-                        })()}
-                        <span className="text-gray-300 font-bold">{selectedKeyword.name}</span>
-                     </div>
-                  )}
+            <div className="h-full flex overflow-hidden">
+               {/* 左侧主要正文滚动区 */}
+               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                  <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+                     {selectedKeyword.parentId && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                           <FolderTree size={12}/>
+                           {(() => {
+                              const path = [];
+                              let curr = keywords.find(k => k.id === selectedKeyword.parentId);
+                              while(curr) { path.unshift(curr); curr = keywords.find(k => k.id === curr!.parentId); }
+                              return path.map((p, i) => ( <React.Fragment key={p.id}><button onClick={() => handleSelect(p.id)} className="hover:text-blue-400 hover:underline">{p.name}</button><ChevronRight size={10}/></React.Fragment> ));
+                           })()}
+                           <span className="text-gray-300 font-bold">{selectedKeyword.name}</span>
+                        </div>
+                     )}
 
-                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 shadow-lg relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-4 opacity-10">{getCategoryIcon(selectedKeyword.category)}</div>
-                     <div className="flex items-start justify-between relative z-10">
-                        <div>
+                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 shadow-lg relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">{getCategoryIcon(selectedKeyword.category)}</div>
+                        <div className="relative z-10">
                            <div className="flex items-center gap-3 mb-2"><span className="bg-blue-900/50 text-blue-300 text-[10px] px-2 py-0.5 rounded border border-blue-800 font-bold uppercase tracking-wider">{KeywordCategoryLabels[selectedKeyword.category]}</span>{(selectedKeyword.tags || []).map(tag => ( <span key={tag} className="text-gray-500 text-xs italic">#{tag}</span> ))}</div>
                            <h1 className="text-4xl font-bold text-white mb-4">{selectedKeyword.name}</h1>
                         </div>
-                     </div>
-                     <div className="mt-8 prose prose-invert prose-sm max-w-none text-gray-300 leading-relaxed whitespace-pre-wrap">{selectedKeyword.description || <span className="text-gray-600 italic">暂无描述...</span>}</div>
-                  </div>
-
-                  {keywords.some(k => k.parentId === selectedKeyword.id) && (
-                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><CornerDownRight size={14} /> 下级词条 / 子项</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                           {keywords.filter(k => k.parentId === selectedKeyword.id).map(child => (
-                              <div key={child.id} onClick={() => handleSelect(child.id)} className="flex items-center gap-2 p-2 rounded border border-gray-800 bg-gray-800/30 hover:bg-gray-800 cursor-pointer transition-colors group">
-                                 <div className="text-gray-500 group-hover:text-blue-400">{getCategoryIcon(child.category)}</div>
-                                 <span className="text-sm text-gray-300 group-hover:text-white">{child.name}</span>
-                              </div>
-                           ))}
+                        <div className="mt-8">
+                           <WikiRichText 
+                             text={selectedKeyword.description || ''}
+                             showRuby={showRuby}
+                             showNotes={showNotes}
+                             noteLayout={noteLayout}
+                           />
                         </div>
                      </div>
-                  )}
 
-                  {selectedKeyword.attachments && selectedKeyword.attachments.length > 0 && (
-                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md"><h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Paperclip size={14} /> 附件资料</h4><AttachmentManager attachments={selectedKeyword.attachments} onUpdate={() => {}} readOnly /></div>
-                  )}
+                     {keywords.some(k => k.parentId === selectedKeyword.id) && (
+                        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md">
+                           <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><CornerDownRight size={14} /> 下级词条 / 子项</h4>
+                           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                              {keywords.filter(k => k.parentId === selectedKeyword.id).map(child => (
+                                 <div key={child.id} onClick={() => handleSelect(child.id)} className="flex items-center gap-2 p-2 rounded border border-gray-800 bg-gray-800/30 hover:bg-gray-800 cursor-pointer transition-colors group">
+                                    <div className="text-gray-500 group-hover:text-blue-400">{getCategoryIcon(child.category)}</div>
+                                    <span className="text-sm text-gray-300 group-hover:text-white">{child.name}</span>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                     )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 h-full flex flex-col shadow-md">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Scroll size={14} /> 引用记录 ({references.length})</h4>
-                        {references.length > 0 ? ( <div className="space-y-2 max-h-60 overflow-y-auto pr-1"> {references.map((ref, idx) => ( <div key={`${ref.type}-${ref.id}-${idx}`} onClick={() => { if (ref.type === 'PERSON' && onJumpToPerson) onJumpToPerson(ref.id); if (ref.type === 'EVENT' && onJumpToEvent) onJumpToEvent(ref.id); if (ref.type === 'LOCATION' && onJumpToLocation) onJumpToLocation(ref.id); }} className="flex flex-col gap-1 p-2 rounded bg-gray-800/50 hover:bg-gray-800 cursor-pointer group border border-transparent hover:border-blue-900/50 transition-colors"> <div className="flex items-center gap-3"> <div className={`p-1.5 rounded-full ${ ref.type === 'PERSON' ? 'bg-indigo-900/50 text-indigo-400' : ref.type === 'EVENT' ? 'bg-orange-900/50 text-orange-400' : 'bg-green-900/50 text-green-400' }`}> {ref.type === 'PERSON' ? <User size={12}/> : ref.type === 'EVENT' ? <Calendar size={12}/> : <MapPin size={12}/>} </div> <div className="flex-1 min-w-0"> <div className="text-xs font-bold text-gray-300 group-hover:text-blue-300 truncate">{ref.name}</div> <div className="text-[10px] text-gray-500 truncate">{ref.context}</div> </div> <div className="opacity-0 group-hover:opacity-100 text-gray-500"> <Link size={12}/> </div> </div> {ref.snippet && ( <div className="mt-1 ml-8 text-[10px] text-gray-400 italic bg-gray-900/50 p-1.5 rounded border border-gray-800/50 flex gap-1"> <Quote size={8} className="shrink-0 mt-0.5 text-gray-600"/> {ref.snippet} </div> )} </div> ))} </div> ) : ( <div className="flex-1 flex flex-col items-center justify-center text-gray-600 italic text-xs py-4"> <Link size={20} className="mb-2 opacity-20" /> 该词条尚未关联到任何事件或人物。 <div className="mt-1 opacity-50 text-[10px]">在人物简介或日程描述中提及此名称即可关联。</div> </div> )}
-                     </div>
-                     <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 shadow-md">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Zap size={14} /> 数据统计</h4>
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-xs"><span className="text-gray-500">关联热度</span><span className="text-blue-400 font-mono">{references.length * 10 + (selectedKeyword.tags?.length || 0) * 5}</span></div>
-                            <div className="flex justify-between text-xs"><span className="text-gray-500">字数统计</span><span className="text-gray-400 font-mono">{selectedKeyword.description?.length || 0}</span></div>
-                            <div className="w-full bg-gray-800 h-1.5 rounded-full mt-2 overflow-hidden"><div className="bg-blue-600 h-full rounded-full" style={{ width: `${Math.min(100, (references.length / 10) * 100)}%` }} /></div>
-                            <div className="text-[10px] text-gray-600 text-right mt-1">关联度指数</div>
+                     {selectedKeyword.attachments && selectedKeyword.attachments.length > 0 && (
+                        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md"><h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Paperclip size={14} /> 附件资料</h4><AttachmentManager attachments={selectedKeyword.attachments} onUpdate={() => {}} readOnly /></div>
+                     )}
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 h-full flex flex-col shadow-md">
+                           <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Scroll size={14} /> 引用记录 ({references.length})</h4>
+                           {references.length > 0 ? ( <div className="space-y-2 max-h-60 overflow-y-auto pr-1"> {references.map((ref, idx) => ( <div key={`${ref.type}-${ref.id}-${idx}`} onClick={() => { if (ref.type === 'PERSON' && onJumpToPerson) onJumpToPerson(ref.id); if (ref.type === 'EVENT' && onJumpToEvent) onJumpToEvent(ref.id); if (ref.type === 'LOCATION' && onJumpToLocation) onJumpToLocation(ref.id); }} className="flex flex-col gap-1 p-2 rounded bg-gray-800/50 hover:bg-gray-800 cursor-pointer group border border-transparent hover:border-blue-900/50 transition-colors"> <div className="flex items-center gap-3"> <div className={`p-1.5 rounded-full ${ ref.type === 'PERSON' ? 'bg-indigo-900/50 text-indigo-400' : ref.type === 'EVENT' ? 'bg-orange-900/50 text-orange-400' : 'bg-green-900/50 text-green-400' }`}> {ref.type === 'PERSON' ? <User size={12}/> : ref.type === 'EVENT' ? <Calendar size={12}/> : <MapPin size={12}/>} </div> <div className="flex-1 min-w-0"> <div className="text-xs font-bold text-gray-300 group-hover:text-blue-300 truncate">{ref.name}</div> <div className="text-[10px] text-gray-500 truncate">{ref.context}</div> </div> </div> {ref.snippet && ( <div className="mt-1 ml-8 text-[10px] text-gray-400 italic bg-gray-900/50 p-1.5 rounded border border-gray-800/50 flex gap-1"> <Quote size={8} className="shrink-0 mt-0.5 text-gray-600"/> {ref.snippet} </div> )} </div> ))} </div> ) : ( <div className="flex-1 flex flex-col items-center justify-center text-gray-600 italic text-xs py-4"> <Link size={20} className="mb-2 opacity-20" /> 未建立显式关联。 </div> )}
                         </div>
                      </div>
                   </div>
                </div>
+
+               {/* 右侧独立注释滚动区 */}
+               {showNotes && noteLayout === 'SIDE' && (
+                  <div className="w-[350px] border-l border-gray-800 bg-gray-900/20 overflow-y-auto scroll-smooth custom-scrollbar relative">
+                     <div className="p-4 border-b border-gray-800 bg-gray-900/40 sticky top-0 z-20 backdrop-blur">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                           <MessageSquare size={14} className="text-blue-500"/> 词条注释
+                        </div>
+                     </div>
+                     <div id="wiki-side-notes-container" className="p-4 space-y-4 pb-32" />
+                  </div>
+               )}
             </div>
             )
          ) : (
@@ -462,7 +511,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                </div>
                <div className="p-6 space-y-4">
                   <div className="text-gray-300">确定要删除词条 <span className="font-bold text-white">{keywords.find(k => k.id === deleteConfirmId)?.name}</span> 吗？</div>
-                  <div className="text-xs text-gray-500 bg-gray-800 p-3 rounded border border-gray-700 flex items-start gap-2"><AlertTriangle size={14} className="text-yellow-500 shrink-0 mt-0.5" /><div>删除操作将移除该词条的所有数据，且子词条将变为独立词条（失去父级）。</div></div>
                   <div className="flex gap-3 mt-4"><button onClick={() => setDeleteConfirmId(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded font-medium border border-gray-700">取消</button><button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded font-bold shadow-lg shadow-red-900/20">确认删除</button></div>
                </div>
             </div>

@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { RelationCategories, RelationLabels, RelationDefinition, RelationType } from '../../types';
+import { RelationCategories, RelationLabels, RelationDefinition, RelationType, RelationCategory } from '../../types';
 
 interface RelationTypeSelectorProps {
   category: string;
@@ -28,7 +27,7 @@ export const RelationTypeSelector: React.FC<RelationTypeSelectorProps> = ({
      if (val === 'CUSTOM_PROJECT') {
          if (customDefinitions.length > 0) firstType = customDefinitions[0].name;
      } else {
-         const cat = RelationCategories[val as keyof typeof RelationCategories];
+         const cat = RelationCategories[val as keyof typeof RelationCategories] as RelationCategory;
          if (cat && cat.types.length > 0) firstType = cat.types[0];
      }
      
@@ -60,7 +59,7 @@ export const RelationTypeSelector: React.FC<RelationTypeSelectorProps> = ({
             onChange={(e) => onCatChange(e.target.value)}
          >
             {Object.entries(RelationCategories).map(([key, cat]) => (
-               <option key={key} value={key}>{cat.label}</option>
+               <option key={key} value={key}>{(cat as RelationCategory).label}</option>
             ))}
             <option value="CUSTOM_PROJECT">自定义 (Custom)</option>
          </select>
@@ -91,7 +90,7 @@ export const RelationTypeSelector: React.FC<RelationTypeSelectorProps> = ({
                     value={type}
                     onChange={(e) => onTypeChange(e.target.value)}
                 >
-                    {RelationCategories[category as keyof typeof RelationCategories].types.map(t => (
+                    {(RelationCategories[category as keyof typeof RelationCategories] as RelationCategory).types.map(t => (
                        <option key={t} value={t}>{RelationLabels[t] || t}</option>
                     ))}
                 </select>

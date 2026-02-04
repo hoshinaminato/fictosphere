@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Person, ViewMode, RelationType, RelationLabels, Project, Gender, GenderLabels, Relationship, Attachment, RelationCategories, RelationDefinition, Keyword, TimeSystem } from '../types';
+import { Person, ViewMode, RelationType, RelationLabels, Project, Gender, GenderLabels, Relationship, Attachment, RelationCategories, RelationDefinition, Keyword, TimeSystem, RelationCategory } from '../types';
 import { Search, Activity, Sparkles, ChevronDown, ChevronRight, GitGraph, Network, Trash2, Save, UserPlus, Users, Link, Plus, X, Settings, Maximize2, Minimize2, Tag, Upload, Paperclip, FileImage, ExternalLink, Check, AlertTriangle, Target, Edit3, ArrowRight, ArrowLeft, ArrowUpDown, CheckSquare, Square, Filter, Book, Calendar, Clock, Power } from 'lucide-react';
 import { analyzeRelationship } from '../services/geminiService';
 import { SearchableSelect } from './SearchableSelect';
@@ -298,7 +297,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const type = selectedLink.type;
       let foundCat = 'CUSTOM_PROJECT';
       
-      for (const [catKey, catVal] of Object.entries(RelationCategories)) {
+      // Fix: cast Object.entries to properly access types on catVal
+      for (const [catKey, catVal] of Object.entries(RelationCategories) as [string, RelationCategory][]) {
           if (catVal.types.includes(type as RelationType)) {
              foundCat = catKey;
              break;
@@ -821,7 +821,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                        type="checkbox" 
                        checked={isFilterEnabled} 
                        onChange={(e) => onSetFilterEnabled(e.target.checked)}
-                       className="rounded border-gray-600 bg-gray-900 text-green-500 focus:ring-0"
+                       className="rounded border-gray-600 bg-gray-900 text-blue-500 focus:ring-0"
                     />
                     <div className="flex-1">
                        <span className={`text-xs font-bold ${isFilterEnabled ? 'text-green-400' : 'text-gray-500'}`}>

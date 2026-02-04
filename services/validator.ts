@@ -75,5 +75,15 @@ export const validateProject = (input: any): ValidationResult => {
      })) : []
   }));
 
+  // 7. 清洗词条关联字段 (新增)
+  data.keywords = data.keywords.map((k: any) => ({
+     ...k,
+     relatedPersonIds: Array.isArray(k.relatedPersonIds) ? k.relatedPersonIds : [],
+     relatedLocationIds: Array.isArray(k.relatedLocationIds) ? k.relatedLocationIds : [],
+     relatedEventIds: Array.isArray(k.relatedEventIds) ? k.relatedEventIds : [],
+     relatedKeywordIds: Array.isArray(k.relatedKeywordIds) ? k.relatedKeywordIds : [],
+     attachments: Array.isArray(k.attachments) ? k.attachments : []
+  }));
+
   return { isValid: true, sanitizedProject: data as Project };
 };

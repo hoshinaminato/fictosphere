@@ -1,134 +1,96 @@
-
-// --- Global Window Declaration ---
-declare global {
-  interface Window {
-    electronAPI?: {
-      saveAsset: (buffer: ArrayBuffer, filename: string) => Promise<string>;
-      exportProject: (data: any) => Promise<boolean>;
-      importProject: () => Promise<any>;
-      getAssetPath: () => Promise<string>;
-      selectAssetPath: () => Promise<string | null>;
-      reloadApp: () => void;
-    };
-  }
-}
-
-// --- Common / Genealogy Types ---
+// types.ts complete reconstruction
 
 export enum Gender {
-  UNKNOWN = 'UNKNOWN',
   MALE = 'MALE',
-  FEMALE = 'FEMALE'
+  FEMALE = 'FEMALE',
+  UNKNOWN = 'UNKNOWN'
 }
+
+export const GenderLabels: Record<Gender, string> = {
+  [Gender.MALE]: '男',
+  [Gender.FEMALE]: '女',
+  [Gender.UNKNOWN]: '未知'
+};
 
 export enum RelationType {
   PARENT = 'PARENT',
   CHILD = 'CHILD',
   SPOUSE = 'SPOUSE',
-  SIBLING = 'SIBLING',
+  LOVER = 'LOVER',
   FRIEND = 'FRIEND',
   ENEMY = 'ENEMY',
+  RIVAL = 'RIVAL',
   COLLEAGUE = 'COLLEAGUE',
-  LOVER = 'LOVER',
-  EX_SPOUSE = 'EX_SPOUSE',   // 离异/丧偶 (Marriage ended)
-  EX_PARTNER = 'EX_PARTNER', // 分手 (Dating ended)
+  BOSS = 'BOSS',
+  MENTOR = 'MENTOR',
+  GRANDPARENT = 'GRANDPARENT',
+  SIBLING = 'SIBLING',
+  COUSIN = 'COUSIN',
   STEP_PARENT = 'STEP_PARENT',
   ADOPTIVE_PARENT = 'ADOPTIVE_PARENT',
-  MENTOR = 'MENTOR',
-  SENIOR = 'SENIOR', // Changed from STUDENT
-  STUDENT = 'STUDENT', // Kept only for backward compatibility if needed, but removed from UI
-  
-  // New Relation Types
-  GRANDPARENT = 'GRANDPARENT',
-  COUSIN = 'COUSIN',
   CRUSH = 'CRUSH',
   LOVE_RIVAL = 'LOVE_RIVAL',
-  RIVAL = 'RIVAL',
-  BOSS = 'BOSS'
+  EX_SPOUSE = 'EX_SPOUSE',
+  EX_PARTNER = 'EX_PARTNER',
+  SENIOR = 'SENIOR',
+  STUDENT = 'STUDENT'
 }
 
 export const RelationLabels: Record<string, string> = {
   [RelationType.PARENT]: '父母',
-  [RelationType.CHILD]: '子女', 
-  [RelationType.GRANDPARENT]: '祖父母',
+  [RelationType.CHILD]: '子女',
   [RelationType.SPOUSE]: '配偶',
-  [RelationType.SIBLING]: '兄弟姐妹',
-  [RelationType.COUSIN]: '表亲',
-  [RelationType.FRIEND]: '好友',
-  [RelationType.ENEMY]: '宿敌',
-  [RelationType.RIVAL]: '对手',
-  [RelationType.COLLEAGUE]: '同僚',
-  [RelationType.BOSS]: '老板',
   [RelationType.LOVER]: '恋人',
-  [RelationType.CRUSH]: '暗恋',
-  [RelationType.LOVE_RIVAL]: '情敌',
-  [RelationType.EX_SPOUSE]: '前配偶(离异)',
-  [RelationType.EX_PARTNER]: '前任(分手)',
+  [RelationType.FRIEND]: '朋友',
+  [RelationType.ENEMY]: '敌人',
+  [RelationType.RIVAL]: '竞争对手',
+  [RelationType.COLLEAGUE]: '同事',
+  [RelationType.BOSS]: '上司',
+  [RelationType.MENTOR]: '导师',
+  [RelationType.GRANDPARENT]: '祖父母',
+  [RelationType.SIBLING]: '兄弟姐妹',
+  [RelationType.COUSIN]: '堂表亲',
   [RelationType.STEP_PARENT]: '继父母',
   [RelationType.ADOPTIVE_PARENT]: '养父母',
-  [RelationType.MENTOR]: '老师',
-  [RelationType.SENIOR]: '前辈'
+  [RelationType.CRUSH]: '暗恋',
+  [RelationType.LOVE_RIVAL]: '情敌',
+  [RelationType.EX_SPOUSE]: '前妻/前夫',
+  [RelationType.EX_PARTNER]: '前任',
+  [RelationType.SENIOR]: '前辈',
+  [RelationType.STUDENT]: '学生'
 };
 
-// Relation Categories for UI Grouping
-export const RelationCategories = {
-  KINSHIP: {
-    label: '亲属家族',
-    types: [
-      RelationType.PARENT, RelationType.SPOUSE, RelationType.SIBLING, 
-      RelationType.GRANDPARENT, RelationType.COUSIN, 
-      RelationType.STEP_PARENT, RelationType.ADOPTIVE_PARENT,
-      RelationType.EX_SPOUSE // 前配偶属于家族历史的一部分，会触发亲缘网络筛选
-    ]
-  },
-  ROMANCE: {
-    label: '情感纠葛',
-    types: [
-      RelationType.LOVER, RelationType.CRUSH, 
-      RelationType.EX_PARTNER, // 普通前任只算情感纠葛，不属于家族谱系
-      RelationType.EX_SPOUSE, 
-      RelationType.LOVE_RIVAL
-    ]
-  },
-  WORK: {
-    label: '职场/师门',
-    types: [
-      RelationType.COLLEAGUE, RelationType.BOSS, RelationType.MENTOR, RelationType.SENIOR
-    ]
-  },
-  SOCIAL: {
-    label: '社交/敌对',
-    types: [
-      RelationType.FRIEND, RelationType.ENEMY, RelationType.RIVAL
-    ]
-  },
-  // CUSTOM category is handled dynamically now
-};
-
-export const GenderLabels: Record<string, string> = {
-  [Gender.UNKNOWN]: '未知',
-  [Gender.MALE]: '男',
-  [Gender.FEMALE]: '女'
-};
-
-export enum ViewMode {
-  TREE = 'TREE',
-  NETWORK = 'NETWORK'
+export interface RelationCategory {
+  label: string;
+  types: RelationType[];
 }
 
-export interface Attribute {
-  key: string;
-  value: string;
+export const RelationCategories: Record<string, RelationCategory> = {
+  KINSHIP: { label: '血缘亲属', types: [RelationType.PARENT, RelationType.CHILD, RelationType.SIBLING, RelationType.GRANDPARENT, RelationType.COUSIN, RelationType.STEP_PARENT, RelationType.ADOPTIVE_PARENT] },
+  SOCIAL: { label: '社交情感', types: [RelationType.SPOUSE, RelationType.LOVER, RelationType.CRUSH, RelationType.EX_SPOUSE, RelationType.EX_PARTNER, RelationType.FRIEND, RelationType.LOVE_RIVAL] },
+  WORK: { label: '职业竞争', types: [RelationType.COLLEAGUE, RelationType.BOSS, RelationType.MENTOR, RelationType.SENIOR, RelationType.STUDENT, RelationType.RIVAL, RelationType.ENEMY] }
+};
+
+export interface RelationDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  isKinship?: boolean;
 }
 
 export interface Attachment {
   id: string;
   name: string;
-  type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'LINK' | 'FILE';
-  url: string; // Base64 or URL
+  type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'LINK';
+  url: string;
   date?: string;
-  size?: string; // Optional file size string
-  description?: string; // Description of the attachment
+  size?: string;
+  description?: string;
+}
+
+export interface Attribute {
+  key: string;
+  value: string;
 }
 
 export interface Person {
@@ -137,51 +99,46 @@ export interface Person {
   gender: Gender;
   familyId: string;
   generation?: number;
-  
-  // Date Fields (Split for flexibility)
-  birthDate?: string; // Legacy / Composite string (e.g. "1990-01-01" or "1990")
+  bio?: string;
+  avatar?: string;
+  birthDate?: string; 
   birthYear?: string;
   birthMonth?: string;
   birthDay?: string;
-  birthIsBC?: boolean; // New: 公元前 flag
-  
-  // For fictional time systems
-  customBirthDate?: string; 
-
-  bio?: string;
-  attributes?: Attribute[]; // RPG Stats or Character Traits
-  inventory?: string[]; // List of item names
-  
-  // New Fields
-  avatar?: string; // Base64 string for profile picture
-  attachments?: Attachment[]; // Related files/images
-
+  birthIsBC?: boolean;
+  customBirthDate?: string;
+  defaultLocationId?: string;
+  attributes?: Attribute[];
+  attachments?: Attachment[];
   isCollapsed?: boolean;
-  defaultLocationId?: string; // Room ID or Node ID where they usually are
+  // D3 force simulation properties
   x?: number;
   y?: number;
-  fx?: number | null;
-  fy?: number | null;
   vx?: number;
   vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
 export interface Relationship {
   id: string;
   source: string | Person;
   target: string | Person;
-  type: RelationType | string; // Allow custom strings now
+  type: string;
   strength: number;
+  startDate?: string;
+  endDate?: string;
+  displayDate?: string;
+  relatedEventIds?: string[];
+  // D3 specific
+  index?: number;
   linkNum?: number;
   linkCount?: number;
-  
-  // Temporal Fields
-  startDate?: string; // Start of relationship (ISO or Year string)
-  endDate?: string;   // End of relationship
-  displayDate?: string; // For non-real time systems
-
-  // New: Event Links
-  relatedEventIds?: string[]; // IDs of events related to this relationship's state change
+  labelX?: number;
+  labelY?: number;
+  labelWidth?: number;
+  labelHeight?: number;
+  angle?: number;
 }
 
 export interface GraphData {
@@ -189,26 +146,17 @@ export interface GraphData {
   links: Relationship[];
 }
 
-export interface RelationDefinition {
-  id: string;
-  name: string;
-  description?: string;
-  isKinship?: boolean; // If true, treated as family for filtering
-}
-
-// --- Blueprint / World Types ---
-
 export enum NodeType {
   LOCATION = 'LOCATION',
   HUB = 'HUB',
   TRANSIT = 'TRANSIT',
+  ROAD = 'ROAD',
   MOUNTAIN = 'MOUNTAIN',
   RIVER = 'RIVER',
+  OCEAN = 'OCEAN',
   BRIDGE = 'BRIDGE',
   FOREST = 'FOREST',
   ISLAND = 'ISLAND',
-  OCEAN = 'OCEAN',
-  ROAD = 'ROAD',
   CASTLE = 'CASTLE',
   TOWER = 'TOWER',
   VILLAGE = 'VILLAGE',
@@ -230,11 +178,10 @@ export enum RoomType {
 
 export interface Item {
   id: string;
-  type: 'DOOR' | 'WINDOW' | 'BED' | 'CHEST' | 'TABLE' | 'NPC' | 'STAIRS' | 'ROAD' | 'WATER' | 'TREE' | 'WALL';
+  name: string;
+  type: string;
   x: number;
   y: number;
-  name: string;
-  [key: string]: any; // Allow other props
 }
 
 export interface Room {
@@ -245,11 +192,11 @@ export interface Room {
   y: number;
   w: number;
   h: number;
-  description?: string;
   items: Item[];
-  floors?: Floor[]; // Recursive for buildings
+  description?: string;
   attributes?: Attribute[];
   attachments?: Attachment[];
+  floors?: Floor[]; 
 }
 
 export interface Floor {
@@ -261,12 +208,12 @@ export interface Floor {
 
 export interface MapNode {
   id: string;
+  name: string;
+  type: NodeType;
   x: number;
   y: number;
-  w?: number;
-  h?: number;
-  type: NodeType;
-  name: string;
+  w: number;
+  h: number;
   description?: string;
   tags: string[];
   floors: Floor[];
@@ -278,7 +225,7 @@ export interface MapEdge {
   id: string;
   sourceId: string;
   targetId: string;
-  label: string;
+  label?: string;
 }
 
 export interface WorldData {
@@ -288,12 +235,54 @@ export interface WorldData {
   edges: MapEdge[];
 }
 
-export type SelectionType = 'NODE' | 'EDGE' | 'FLOOR' | 'ROOM' | 'ITEM' | 'PERSON' | null;
-
-export interface Selection {
-  type: SelectionType;
+export interface CalendarEvent {
   id: string;
-  parentId?: string;
+  title: string;
+  description?: string;
+  start: string; 
+  end: string;   
+  startIsBC?: boolean;
+  endIsBC?: boolean;
+  displayDate?: string;
+  sortOrder?: number;
+  locationId: string;
+  participantIds: string[];
+  relatedKeywordIds: string[];
+  attachments?: Attachment[];
+}
+
+export enum TimeSystem {
+  REAL = 'REAL',
+  ERA = 'ERA',
+  RELATIVE = 'RELATIVE',
+  CHAPTER = 'CHAPTER',
+  SEASONAL = 'SEASONAL',
+  NONE = 'NONE'
+}
+
+export interface ProjectTimeConfig {
+  system: TimeSystem;
+  label?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  type: string;
+  timeConfig?: ProjectTimeConfig;
+  data: GraphData;
+  world: WorldData;
+  events: CalendarEvent[];
+  keywords: Keyword[];
+  globalAttributeKeys?: string[];
+  relationDefinitions?: RelationDefinition[];
+  lastAccessed?: string;
+  isPinned?: boolean;
+}
+
+export enum ViewMode {
+  NETWORK = 'NETWORK',
+  TREE = 'TREE'
 }
 
 export enum ViewLevel {
@@ -306,6 +295,14 @@ export enum MapDisplayMode {
   DYNAMIC = 'DYNAMIC'
 }
 
+export interface Selection {
+  type: 'NODE' | 'EDGE' | 'FLOOR' | 'ROOM' | 'ITEM' | 'PERSON';
+  id: string;
+  parentId?: string;
+}
+
+export type SelectionType = Selection['type'] | null;
+
 export interface BlueprintViewState {
   viewLevel: ViewLevel;
   activeNodeId: string | null;
@@ -317,91 +314,47 @@ export interface BlueprintViewState {
   isPlaying: boolean;
 }
 
+export interface ExportData {
+  version: string;
+  timestamp: string;
+  project: Project;
+}
+
 export type ThemeMode = 'BLUEPRINT' | 'INK' | 'CYBERPUNK' | 'CARTOON' | 'SCRAPBOOK';
 
-// --- Time System Types ---
-
-export enum TimeSystem {
-  REAL = 'REAL', // 现实时间 (Gregorian)
-  ERA = 'ERA',   // 虚构纪元 (Custom Era + Year)
-  RELATIVE = 'RELATIVE', // 相对时间 (Day 1, Day 2...)
-  CHAPTER = 'CHAPTER',   // 章节递推 (Chapter 1, 2...)
-  SEASONAL = 'SEASONAL', // 季节循环 (Spring, Summer...)
-  NONE = 'NONE'          // 无需时间 / 意识流
-}
-
-export interface ProjectTimeConfig {
-  system: TimeSystem;
-  label?: string; // e.g., "Galactic Era", "Year of the Dragon"
-  startYear?: number; // Base year offset for Era
-}
-
-// --- Calendar / Event Types ---
-
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  description?: string;
-  
-  // Real Time Fields
-  start: string; // ISO String (Used for REAL time)
-  end: string; // ISO String
-  startIsBC?: boolean; // New: 公元前 flag for start
-  endIsBC?: boolean;   // New: 公元前 flag for end
-  
-  // Fictional Time Fields
-  displayDate?: string; // Human readable string for non-real time (e.g. "Year 205, Spring")
-  sortOrder?: number; // For manual ordering in timeline
-  
-  locationId: string;
-  participantIds: string[];
-  relatedKeywordIds?: string[];
-  attachments?: Attachment[];
-}
-
-// --- Wiki / Keyword Types ---
-
 export type KeywordCategory = 'ITEM' | 'FACTION' | 'SPELL' | 'TERM' | 'LOCATION_LORE';
+
 export const KeywordCategoryLabels: Record<KeywordCategory, string> = {
-  ITEM: '物品',
+  ITEM: '物品/道具',
   FACTION: '组织/势力',
   SPELL: '功法/技能',
   TERM: '专有名词',
-  LOCATION_LORE: '地点设定'
+  LOCATION_LORE: '地点传说'
 };
 
 export interface Keyword {
   id: string;
   name: string;
   category: KeywordCategory;
-  parentId?: string; // For hierarchical structure (e.g. School -> Class)
+  parentId?: string; 
   description?: string;
   tags?: string[];
   relatedPersonIds?: string[];
+  relatedLocationIds?: string[]; 
+  relatedEventIds?: string[];    
+  relatedKeywordIds?: string[];  
   attachments?: Attachment[];
 }
 
-// --- Project Type ---
-
-export interface Project {
-  id: string;
-  name: string;
-  type: 'GENEALOGY' | 'SOCIAL' | string;
-  
-  timeConfig?: ProjectTimeConfig; // New: Time settings
-
-  data: GraphData;
-  world: WorldData;
-  events: CalendarEvent[];
-  keywords: Keyword[];
-  globalAttributeKeys?: string[];
-  relationDefinitions?: RelationDefinition[];
-  lastAccessed?: string; // ISO timestamp for sorting
-  isPinned?: boolean; // Sort preference
-}
-
-export interface ExportData {
-  version: string;
-  timestamp: string;
-  project: Project;
+declare global {
+  interface Window {
+    electronAPI: {
+      saveAsset: (buffer: ArrayBuffer, filename: string) => Promise<string>;
+      exportProject: (data: ExportData) => Promise<boolean>;
+      importProject: () => Promise<ExportData | null>;
+      getAssetPath: () => Promise<string>;
+      selectAssetPath: () => Promise<string | null>;
+      reloadApp: () => void;
+    };
+  }
 }

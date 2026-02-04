@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 import { 
   Simulation, 
@@ -121,12 +120,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     multiSelectionRef.current = multiSelection;
   }, [multiSelection]);
 
-  // Fix: Explicitly narrow selectedPersonId to string and explicitly type the callback parameter 'prev' to resolve 'unknown' type issues.
+  // Fix: Narrowed sid and explicitly cast Set type if needed.
   useEffect(() => {
     if (typeof selectedPersonId === 'string') {
        const sid: string = selectedPersonId;
-       setMultiSelection((prev: Set<string>) => {
-          if (prev.size > 1 && prev.has(sid)) return prev;
+       setMultiSelection((prev) => {
+          const p = prev as Set<string>;
+          if (p.size > 1 && p.has(sid)) return p;
           return new Set<string>([sid]);
        });
     }
@@ -517,7 +517,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       .on('click', (event, d: any) => { 
          if (event.defaultPrevented || isDragMovedRef.current) return; 
          event.stopPropagation(); const isShift = event.shiftKey; const currentSelection = multiSelectionRef.current;
-         if (isShift) setMultiSelection(prev => { const newSet = new Set(prev); if(newSet.has(d.id)) newSet.delete(d.id); else newSet.add(d.id); return newSet; });
+         if (isShift) setMultiSelection(prev => { const newSet = new Set(prev as Set<string>); if(newSet.has(d.id)) newSet.delete(d.id); else newSet.add(d.id); return newSet; });
          else { if (currentSelection.has(d.id) && currentSelection.size > 1) return; setMultiSelection(new Set([d.id])); onNodeClickRef.current(d); }
          isDragMovedRef.current = false;
       });

@@ -17,7 +17,7 @@ import {
   polygonHull,
   ZoomBehavior
 } from 'd3';
-import { GraphData, Person, Relationship, ViewMode, RelationType, RelationLabels, RelationCategories, RelationDefinition } from '../types';
+import { GraphData, Person, Relationship, ViewMode, RelationType, RelationLabels, RelationCategories, RelationDefinition, Gender } from '../types';
 import { Unlock, BoxSelect, MousePointer2, Download, Loader2, ArrowLeft, GitGraph } from 'lucide-react';
 
 interface GraphCanvasProps {
@@ -122,7 +122,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
   // Fix: Narrowed sid and explicitly cast Set type if needed.
   useEffect(() => {
-    if (typeof selectedPersonId === 'string') {
+    // Fix: Using typeof check to ensure selectedPersonId is a string and avoid 'unknown' type issues
+    if (typeof selectedPersonId === 'string' && selectedPersonId !== '') {
        const sid: string = selectedPersonId;
        setMultiSelection((prev) => {
           const p = prev as Set<string>;
@@ -233,6 +234,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         .hull { fill: rgba(34, 211, 238, 0.1); stroke: rgba(34, 211, 238, 0.4); }
         .link-flow { display: none; }
         .static-dir-arrow { opacity: 0.8; }
+        .gender-badge circle { stroke: #0f172a; }
       `;
       clone.prepend(style);
       const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -485,7 +487,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const linkGroup = linkLayer.selectAll<SVGGElement, Relationship>('g.link-group').data(links, (d: any) => d.id).join(enter => {
           const g = enter.append('g').attr('class', 'link-group'); g.append('path').attr('class', 'link-base').attr('fill', 'none').attr('stroke-dasharray', '5, 5'); g.append('path').attr('class', 'link-flow flow-line').attr('fill', 'none').attr('stroke', '#3b82f6').attr('stroke-width', 4).attr('stroke-linecap', 'round').attr('stroke-dasharray', '0, 20').attr('opacity', 0.9); g.append('path').attr('class', 'link-hit').attr('fill', 'none').attr('stroke', 'transparent').attr('stroke-width', 15).attr('cursor', 'pointer');
           g.append('path').attr('class', 'static-dir-arrow').attr('fill-opacity', 0.8).attr('stroke', 'none');
-          const labelG = g.append('g').attr('class', 'link-label-group').attr('cursor', 'pointer'); labelG.append('rect').attr('rx', 4).attr('ry', 4).attr('fill', '#1f2937').attr('stroke-opacity', 0.8); labelG.append('text').attr('class', 'primary-label').attr('text-anchor', 'middle').attr('dominant-baseline', 'central').attr('font-size', '8px').attr('fill', '#e5e7eb').attr('pointer-events', 'none'); labelG.append('text').attr('class', 'time-label').attr('text-anchor', 'middle').attr('dominant-baseline', 'central').attr('font-size', '6px').attr('fill', '#9ca3af').attr('pointer-events', 'none'); 
+          const labelG = g.append('g').attr('class', 'link-label-group').attr('cursor', 'pointer'); labelG.append('rect').attr('rx', 4).attr('ry', 4).attr('fill', '#111827').attr('stroke-opacity', 0.8); labelG.append('text').attr('class', 'primary-label').attr('text-anchor', 'middle').attr('dominant-baseline', 'central').attr('font-size', '8px').attr('fill', '#e5e7eb').attr('pointer-events', 'none'); labelG.append('text').attr('class', 'time-label').attr('text-anchor', 'middle').attr('dominant-baseline', 'central').attr('font-size', '6px').attr('fill', '#9ca3af').attr('pointer-events', 'none'); 
           return g;
         }
       );
@@ -511,8 +513,26 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
           g.append('clipPath').attr('id', d => `clip-${d.id}`).append('circle').attr('r', 20); g.append('circle').attr('class', 'node-circle').attr('r', 20).attr('fill', '#1f2937').attr('stroke-width', 2);
           g.append('image').attr('xlink:href', d => d.avatar || '').attr('x', -20).attr('y', -20).attr('width', 40).attr('height', 40).attr('clip-path', d => `url(#clip-${d.id})`).attr('preserveAspectRatio', 'xMidYMid slice').style('display', d => d.avatar ? 'block' : 'none');
           g.append('text').attr('dy', 5).attr('dx', 0).attr('text-anchor', 'middle').attr('fill', '#fff').attr('font-size', '12px').attr('font-weight', 'bold').attr('class', 'initial-text').text(d => d.name.charAt(0)).style('display', d => d.avatar ? 'none' : 'block');
-          g.append('text').attr('dy', 35).attr('text-anchor', 'middle').attr('fill', '#e5e7eb').attr('font-size', '10px').attr('class', 'name-label').text(d => d.name); return g;
-        }, update => { update.select('image').attr('xlink:href', d => d.avatar || '').style('display', d => d.avatar ? 'block' : 'none'); update.select('.initial-text').text(d => d.name.charAt(0)).style('display', d => d.avatar ? 'none' : 'block'); update.select('.name-label').text(d => d.name); return update; }
+          g.append('text').attr('dy', 35).attr('text-anchor', 'middle').attr('fill', '#e5e7eb').attr('font-size', '10px').attr('class', 'name-label').text(d => d.name); 
+
+          // 性别标识
+          const genderG = g.append('g').attr('class', 'gender-badge').attr('transform', 'translate(14, 14)');
+          genderG.append('circle').attr('r', 7).attr('stroke', '#0f172a').attr('stroke-width', 1.5);
+          genderG.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central').attr('font-size', '9px').attr('font-weight', 'bold').attr('fill', '#fff');
+
+          return g;
+        }, update => { 
+          update.select('image').attr('xlink:href', d => d.avatar || '').style('display', d => d.avatar ? 'block' : 'none'); 
+          update.select('.initial-text').text(d => d.name.charAt(0)).style('display', d => d.avatar ? 'none' : 'block'); 
+          update.select('.name-label').text(d => d.name); 
+          
+          const genderG = update.select('.gender-badge');
+          genderG.style('display', d => d.gender === Gender.UNKNOWN ? 'none' : 'block');
+          genderG.select('circle').attr('fill', d => d.gender === Gender.MALE ? '#3b82f6' : '#ec4899');
+          genderG.select('text').text(d => d.gender === Gender.MALE ? '♂' : '♀');
+
+          return update; 
+        }
       )
       .on('click', (event, d: any) => { 
          if (event.defaultPrevented || isDragMovedRef.current) return; 

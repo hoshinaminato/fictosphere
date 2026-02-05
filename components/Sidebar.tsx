@@ -298,7 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       let foundCat = 'CUSTOM_PROJECT';
       
       // Fix: cast Object.entries to properly access types on catVal
-      for (const [catKey, catVal] of Object.entries(RelationCategories) as [string, RelationCategory][]) {
+      for (const [catKey, catVal] of Object.entries(RelationCategories) as unknown as [string, RelationCategory][]) {
           if (catVal.types.includes(type as RelationType)) {
              foundCat = catKey;
              break;
@@ -1622,7 +1622,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
                                <h3 className="text-lg font-bold text-white mb-4">生平事迹</h3>
                                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                  {selectedPerson.bio || '暂无详细记载。'}
+                                  {/* Fix: Changed selectedKeyword to selectedPerson */}
+                                  {selectedPerson?.bio || '暂无详细记载。'}
                                </p>
                             </div>
 

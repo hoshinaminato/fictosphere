@@ -1,3 +1,4 @@
+
 // types.ts complete reconstruction
 
 export enum Gender {
@@ -339,6 +340,7 @@ export interface Keyword {
   parentId?: string; 
   description?: string;
   tags?: string[];
+  attributes?: Attribute[];
   relatedPersonIds?: string[];
   relatedLocationIds?: string[]; 
   relatedEventIds?: string[];    

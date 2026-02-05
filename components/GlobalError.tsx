@@ -17,14 +17,16 @@ interface GlobalErrorState {
  * Global error boundary to catch and handle application-level crashes.
  */
 export class GlobalError extends Component<GlobalErrorProps, GlobalErrorState> {
+  // Fix: Explicitly define state on the class to ensure TS can track its existence
+  public state: GlobalErrorState = {
+    hasError: false,
+    error: null,
+    errorInfo: null,
+    isRecovering: false
+  };
+
   constructor(props: GlobalErrorProps) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      isRecovering: false
-    };
   }
 
   // Static method for state update on error.

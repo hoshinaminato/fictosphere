@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Project, Keyword, KeywordCategory, KeywordCategoryLabels } from '../types';
+import { Project, Keyword, KeywordCategory, KeywordCategoryLabels, Attribute, Attachment } from '../types';
 import { Book, Search, Plus, Tag, Edit3, Trash2, BookOpen, Scroll, Shield, Zap, MapPin, Box, Check, X, User, Calendar, Link, UserPlus, Quote, AlertTriangle, Paperclip, ChevronRight, ChevronDown, CornerDownRight, FolderTree, GitBranch, FileText, MessageSquare, Type } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { AttachmentManager } from './AttachmentManager';
@@ -77,7 +77,7 @@ const WikiTreeNode: React.FC<{
           keyword={child} 
           allKeywords={allKeywords} 
           selectedId={selectedId} 
-          onSelect={onSelect}
+          onSelect={onSelect} 
           level={level + 1}
           expandedIds={expandedIds}
           toggleExpand={toggleExpand}
@@ -102,6 +102,10 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Keyword>>({});
+  
+  // New State for editing attributes
+  const [newAttrKey, setNewAttrKey] = useState('');
+  const [newAttrValue, setNewAttrValue] = useState('');
 
   // 阅读偏好设置
   const [showRuby, setShowRuby] = useState(true);
@@ -137,13 +141,12 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
      return keywords.filter(k => !k.parentId).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
   }, [keywords]);
 
-  // --- 系统引用追踪逻辑 (System Reference Tracking) ---
+  // --- 系统引用追踪逻辑 ---
   const references = useMemo(() => {
     if (!selectedKeyword) return [];
     const results: { type: 'PERSON' | 'EVENT' | 'LOCATION', id: string, name: string, context: string, snippet?: string }[] = [];
     const kName = selectedKeyword.name;
 
-    // 1. 在人物资料中搜索 (Search in People)
     project.data.nodes.forEach(p => {
        if (p.bio?.includes(kName)) {
           const idx = p.bio.indexOf(kName);
@@ -158,7 +161,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
        }
     });
 
-    // 2. 在日程事件中搜索 (Search in Events)
     project.events.forEach(e => {
        if (e.description?.includes(kName) || e.title.includes(kName)) {
           const idx = e.description?.indexOf(kName) || 0;
@@ -173,17 +175,18 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
        }
     });
 
-    // 3. 在地理节点中搜索 (Search in Locations)
     project.world.nodes.forEach(n => {
        if (n.description?.includes(kName) || n.name.includes(kName)) {
-          results.push({ type: 'LOCATION', id: n.id, name: n.name, context: '地理描述引用' });
+          const idx = n.description?.indexOf(kName) || 0;
+          results.push({ 
+            type: 'LOCATION', id: n.id, name: n.name, context: '地理描述引用' 
+          });
        }
        if (selectedKeyword.relatedLocationIds?.includes(n.id)) {
           results.push({ type: 'LOCATION', id: n.id, name: n.name, context: '显式关联' });
        }
     });
 
-    // 去重 (Deduplicate)
     const seen = new Set();
     return results.filter(r => {
        const key = `${r.type}-${r.id}-${r.context}`;
@@ -229,6 +232,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
        parentId: defaultParent, 
        description: '', 
        tags: [], 
+       attributes: [],
        attachments: [],
        relatedPersonIds: [],
        relatedLocationIds: [],
@@ -244,10 +248,12 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
     if (!selectedKeyword) return;
     setFormData({ 
        ...selectedKeyword,
+       attributes: selectedKeyword.attributes || [],
        relatedPersonIds: selectedKeyword.relatedPersonIds || [],
        relatedLocationIds: selectedKeyword.relatedLocationIds || [],
        relatedEventIds: selectedKeyword.relatedEventIds || [],
-       relatedKeywordIds: selectedKeyword.relatedKeywordIds || []
+       relatedKeywordIds: selectedKeyword.relatedKeywordIds || [],
+       attachments: selectedKeyword.attachments || []
     });
     setIsEditing(true);
     setShowTreeView(false);
@@ -262,20 +268,25 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
       parentId: formData.parentId ?? undefined, 
       description: formData.description || '', 
       tags: formData.tags || [], 
+      attributes: formData.attributes || [],
       relatedPersonIds: formData.relatedPersonIds || [], 
       relatedLocationIds: formData.relatedLocationIds || [],
       relatedEventIds: formData.relatedEventIds || [],
       relatedKeywordIds: formData.relatedKeywordIds || [],
       attachments: formData.attachments || [] 
     };
+    saveKeyword(newKeyword);
+    setIsEditing(false);
+    setSelectedId(newKeyword.id);
+    if (newKeyword.parentId) expandPathToId(newKeyword.parentId);
+  };
+
+  const saveKeyword = (newKeyword: Keyword) => {
     let newKeywords = [...keywords];
     const existingIdx = newKeywords.findIndex(k => k.id === newKeyword.id);
     if (existingIdx >= 0) newKeywords[existingIdx] = newKeyword;
     else newKeywords.push(newKeyword);
     onUpdateProject({ ...project, keywords: newKeywords });
-    setIsEditing(false);
-    setSelectedId(newKeyword.id);
-    if (newKeyword.parentId) expandPathToId(newKeyword.parentId);
   };
 
   const handleDelete = () => { if (!selectedId) return; setDeleteConfirmId(selectedId); };
@@ -291,13 +302,82 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
      }
   };
 
+  // 处理查看模式下的快速标注
+  const handleQuickAnnotation = (original: string, replacement: string) => {
+    if (!selectedKeyword) return;
+    const desc = selectedKeyword.description || '';
+    const newDesc = desc.replace(original, replacement);
+    if (newDesc !== desc) {
+       const updated: Keyword = { ...selectedKeyword, description: newDesc };
+       saveKeyword(updated);
+    }
+  };
+
+  // 处理对已有标注内容的更新
+  const handleUpdateNote = (oldFull: string, newFull: string) => {
+    if (!selectedKeyword) return;
+    const desc = selectedKeyword.description || '';
+    const newDesc = desc.replace(oldFull, newFull);
+    if (newDesc !== desc) {
+      const updated: Keyword = { ...selectedKeyword, description: newDesc };
+      saveKeyword(updated);
+    }
+  };
+
+  // 处理对标注语法的移除（剥离语法保留文本）
+  const handleRemoveAnnotation = (oldFull: string, anchorText: string) => {
+    if (!selectedKeyword) return;
+    const desc = selectedKeyword.description || '';
+    const newDesc = desc.replace(oldFull, anchorText);
+    if (newDesc !== desc) {
+      const updated: Keyword = { ...selectedKeyword, description: newDesc };
+      saveKeyword(updated);
+    }
+  };
+
+  // 侧栏注释编辑器发起的上传资产请求
+  const handleNoteUploadFile = async (file: File): Promise<Attachment> => {
+    if (!selectedKeyword) throw new Error("No active keyword");
+    
+    let url = '';
+    if (window.electronAPI) {
+      const buffer = await file.arrayBuffer();
+      url = await window.electronAPI.saveAsset(buffer, file.name);
+    } else {
+      const reader = new FileReader();
+      url = await new Promise((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 将新图片作为附件永久保存到词条中
+    const newAttachment: Attachment = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      type: 'IMAGE',
+      url,
+      date: new Date().toISOString(),
+      size: (file.size / 1024).toFixed(1) + ' KB',
+      description: '来自注释快捷上传'
+    };
+
+    const updated: Keyword = {
+      ...selectedKeyword,
+      attachments: [...(selectedKeyword.attachments || []), newAttachment]
+    };
+    saveKeyword(updated);
+
+    return newAttachment;
+  };
+
   const insertSyntax = (syntaxType: 'ruby' | 'note') => {
     const textarea = document.getElementById('wiki-editor-textarea') as HTMLTextAreaElement;
     if (!textarea) return;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const selection = text.substring(start, end);
+    const textValue = textarea.value;
+    const selection = textValue.substring(start, end);
     
     let replacement = '';
     if (syntaxType === 'ruby') {
@@ -306,7 +386,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
       replacement = `[${selection || '文字或图片地址'}]{note:注释内容}`;
     }
 
-    const newValue = text.substring(0, start) + replacement + text.substring(end);
+    const newValue = textValue.substring(0, start) + replacement + textValue.substring(end);
     setFormData({ ...formData, description: newValue });
     
     setTimeout(() => {
@@ -327,7 +407,26 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
     }
   };
 
-  // 选项准备
+  const handleAddAttribute = () => {
+    if (!newAttrKey.trim()) return;
+    const current = formData.attributes || [];
+    setFormData({ ...formData, attributes: [...current, { key: newAttrKey, value: newAttrValue }] });
+    setNewAttrKey('');
+    setNewAttrValue('');
+  };
+
+  const handleRemoveAttribute = (idx: number) => {
+    const current = [...(formData.attributes || [])];
+    current.splice(idx, 1);
+    setFormData({ ...formData, attributes: current });
+  };
+
+  const handleUpdateAttribute = (idx: number, field: 'key' | 'value', val: string) => {
+    const current = [...(formData.attributes || [])];
+    current[idx] = { ...current[idx], [field]: val };
+    setFormData({ ...formData, attributes: current });
+  };
+
   const personOptions = useMemo(() => project.data.nodes.map(p => ({ label: p.name, value: p.id, group: p.familyId })), [project.data.nodes]);
   const parentOptions = useMemo(() => keywords.filter(k => k.id !== formData.id).map(k => ({ label: k.name, value: k.id, group: KeywordCategoryLabels[k.category] })), [keywords, formData.id]);
   const keywordSelectOptions = useMemo(() => keywords.filter(k => k.id !== formData.id).map(k => ({ label: k.name, value: k.id, group: KeywordCategoryLabels[k.category] })), [keywords, formData.id]);
@@ -444,7 +543,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                   </div>
 
                   <div className="space-y-8">
-                     {/* 基础信息 */}
                      <section className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">名称</label><input className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white focus:border-blue-500 outline-none" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="词条名称" /></div>
@@ -453,33 +551,80 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                         <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1"><FolderTree size={12} /> 归属关系 (层级父项)</label><SearchableSelect options={parentOptions} value={formData.parentId || ''} onChange={(val) => setFormData({ ...formData, parentId: val || undefined })} placeholder="选择上级节点 (可选)" darker={true} /></div>
                      </section>
 
-                     {/* 描述正文 */}
+                     <section className="bg-gray-800/20 p-6 rounded-xl border border-gray-800">
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2 tracking-wider">
+                           <Tag size={14} className="text-blue-400"/> 设定属性 (独特字段)
+                        </label>
+                        <div className="space-y-3 mb-4">
+                           {(formData.attributes || []).map((attr, idx) => (
+                              <div key={idx} className="flex gap-2 group">
+                                 <input 
+                                    className="w-1/3 bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm text-gray-300"
+                                    placeholder="属性名"
+                                    value={attr.key}
+                                    onChange={e => handleUpdateAttribute(idx, 'key', e.target.value)}
+                                 />
+                                 <input 
+                                    className="flex-1 bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm text-gray-300"
+                                    placeholder="数值"
+                                    value={attr.value}
+                                    onChange={e => handleUpdateAttribute(idx, 'value', e.target.value)}
+                                 />
+                                 <button onClick={() => handleRemoveAttribute(idx)} className="text-gray-600 hover:text-red-400 p-1"><X size={16}/></button>
+                              </div>
+                           ))}
+                           {(!formData.attributes || formData.attributes.length === 0) && (
+                              <div className="text-xs text-gray-600 italic">暂无自定义属性设定。</div>
+                           )}
+                        </div>
+                        <div className="flex gap-2 pt-2 border-t border-gray-800/50">
+                           <input 
+                              className="w-1/3 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-xs"
+                              placeholder="新属性名"
+                              value={newAttrKey}
+                              onChange={e => setNewAttrKey(e.target.value)}
+                           />
+                           <input 
+                              className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-xs"
+                              placeholder="数值内容"
+                              value={newAttrValue}
+                              onChange={e => setNewAttrValue(e.target.value)}
+                           />
+                           <button onClick={handleAddAttribute} disabled={!newAttrKey.trim()} className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/30 px-4 rounded text-xs font-bold transition-all disabled:opacity-30 disabled:pointer-events-none">添加</button>
+                        </div>
+                     </section>
+
                      <section>
                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">设定描述</label>
                        <textarea id="wiki-editor-textarea" className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white h-48 focus:border-blue-500 outline-none resize-none font-mono text-sm leading-relaxed" value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="输入设定详情..." />
                      </section>
 
-                     {/* 关联矩阵 */}
+                     <section className="bg-gray-800/20 p-6 rounded-xl border border-gray-800">
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2 tracking-wider">
+                           <Paperclip size={14} className="text-blue-400"/> 附件资料
+                        </label>
+                        <AttachmentManager 
+                           attachments={formData.attachments || []}
+                           onUpdate={(atts) => setFormData({ ...formData, attachments: atts })}
+                        />
+                     </section>
+
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* 关联人物 */}
                         <div className="bg-gray-800/20 p-4 rounded-xl border border-gray-800">
                            <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><User size={14}/> 关联人物</label>
                            <div className="flex flex-wrap gap-2 mb-3">{(formData.relatedPersonIds || []).map(pid => ( <div key={pid} className="bg-indigo-900/30 text-indigo-300 text-[10px] px-2 py-0.5 rounded border border-indigo-800 flex items-center gap-1">{project.data.nodes.find(p => p.id === pid)?.name || 'Unknown'}<button onClick={() => setFormData({ ...formData, relatedPersonIds: formData.relatedPersonIds?.filter(id => id !== pid) })} className="hover:text-white"><X size={12}/></button></div> ))}</div>
                            <SearchableSelect options={personOptions} value="" onChange={(pid) => pid && !formData.relatedPersonIds?.includes(pid) && setFormData({ ...formData, relatedPersonIds: [...(formData.relatedPersonIds || []), pid] })} placeholder="关联人物..." darker={true} />
                         </div>
-                        {/* 关联地点 */}
                         <div className="bg-gray-800/20 p-4 rounded-xl border border-gray-800">
                            <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><MapPin size={14}/> 关联地点</label>
                            <div className="flex flex-wrap gap-2 mb-3">{(formData.relatedLocationIds || []).map(lid => ( <div key={lid} className="bg-emerald-900/30 text-emerald-300 text-[10px] px-2 py-0.5 rounded border border-emerald-800 flex items-center gap-1">{locationOptions.find(o => o.value === lid)?.label || 'Unknown'}<button onClick={() => setFormData({ ...formData, relatedLocationIds: formData.relatedLocationIds?.filter(id => id !== lid) })} className="hover:text-white"><X size={12}/></button></div> ))}</div>
                            <SearchableSelect options={locationOptions} value="" onChange={(lid) => lid && !formData.relatedLocationIds?.includes(lid) && setFormData({ ...formData, relatedLocationIds: [...(formData.relatedLocationIds || []), lid] })} placeholder="关联地点..." darker={true} />
                         </div>
-                        {/* 关联日程 */}
                         <div className="bg-gray-800/20 p-4 rounded-xl border border-gray-800">
                            <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Calendar size={14}/> 涉及日程</label>
                            <div className="flex flex-wrap gap-2 mb-3">{(formData.relatedEventIds || []).map(eid => ( <div key={eid} className="bg-orange-900/30 text-orange-300 text-[10px] px-2 py-0.5 rounded border border-orange-800 flex items-center gap-1">{project.events.find(e => e.id === eid)?.title || 'Unknown'}<button onClick={() => setFormData({ ...formData, relatedEventIds: formData.relatedEventIds?.filter(id => id !== eid) })} className="hover:text-white"><X size={12}/></button></div> ))}</div>
                            <SearchableSelect options={eventOptions} value="" onChange={(eid) => eid && !formData.relatedEventIds?.includes(eid) && setFormData({ ...formData, relatedEventIds: [...(formData.relatedEventIds || []), eid] })} placeholder="关联日程..." darker={true} />
                         </div>
-                        {/* 相关词条 */}
                         <div className="bg-gray-800/20 p-4 rounded-xl border border-gray-800">
                            <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Link size={14}/> 相关百科</label>
                            <div className="flex flex-wrap gap-2 mb-3">{(formData.relatedKeywordIds || []).map(kid => ( <div key={kid} className="bg-blue-900/30 text-blue-300 text-[10px] px-2 py-0.5 rounded border border-blue-800 flex items-center gap-1">{keywords.find(k => k.id === kid)?.name || 'Unknown'}<button onClick={() => setFormData({ ...formData, relatedKeywordIds: formData.relatedKeywordIds?.filter(id => id !== kid) })} className="hover:text-white"><X size={12}/></button></div> ))}</div>
@@ -501,7 +646,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
             <div className="h-full flex overflow-hidden">
                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                   <div className="max-w-3xl mx-auto space-y-8 animate-fade-in pb-32">
-                     {/* 路径面包屑 */}
                      {selectedKeyword.parentId && (
                         <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                            <FolderTree size={12}/>
@@ -515,19 +659,41 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                         </div>
                      )}
 
-                     {/* 主内容卡片 */}
                      <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 shadow-lg relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-10">{getCategoryIcon(selectedKeyword.category)}</div>
                         <div className="relative z-10">
-                           <div className="flex items-center gap-3 mb-2"><span className="bg-blue-900/50 text-blue-300 text-[10px] px-2 py-0.5 rounded border border-blue-800 font-bold uppercase tracking-wider">{KeywordCategoryLabels[selectedKeyword.category]}</span>{(selectedKeyword.tags || []).map(tag => ( <span key={tag} className="text-gray-500 text-xs italic">#{tag}</span> ))}</div>
+                           <div className="flex items-center gap-3 mb-2">
+                              <span className="bg-blue-900/50 text-blue-300 text-[10px] px-2 py-0.5 rounded border border-blue-800 font-bold uppercase tracking-wider">{KeywordCategoryLabels[selectedKeyword.category]}</span>
+                              {(selectedKeyword.tags || []).map(tag => ( <span key={tag} className="text-gray-500 text-xs italic">#{tag}</span> ))}
+                           </div>
                            <h1 className="text-4xl font-bold text-white mb-4">{selectedKeyword.name}</h1>
+                           
+                           {selectedKeyword.attributes && selectedKeyword.attributes.length > 0 && (
+                              <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4 border-t border-gray-800 pt-6">
+                                 {selectedKeyword.attributes.map((attr, idx) => (
+                                    <div key={idx} className="bg-gray-800/40 p-3 rounded-lg border border-gray-800/50 hover:border-blue-900/50 transition-colors">
+                                       <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1 truncate" title={attr.key}>{attr.key}</div>
+                                       <div className="text-sm text-blue-100 font-medium break-words">{attr.value}</div>
+                                    </div>
+                                 ))}
+                              </div>
+                           )}
                         </div>
                         <div className="mt-8 border-t border-gray-800 pt-6">
-                           <WikiRichText text={selectedKeyword.description || ''} showRuby={showRuby} showNotes={showNotes} noteLayout={noteLayout} />
+                           <WikiRichText 
+                             text={selectedKeyword.description || ''} 
+                             showRuby={showRuby} 
+                             showNotes={showNotes} 
+                             noteLayout={noteLayout} 
+                             attachments={selectedKeyword.attachments}
+                             onAddAnnotation={handleQuickAnnotation}
+                             onUpdateNote={handleUpdateNote}
+                             onRemoveAnnotation={handleRemoveAnnotation}
+                             onUploadFile={handleNoteUploadFile}
+                           />
                         </div>
                      </div>
 
-                     {/* 层级导航 */}
                      {keywords.some(k => k.parentId === selectedKeyword.id) && (
                         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md">
                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2 border-b border-gray-800 pb-2"><CornerDownRight size={14} /> 下级词条</h4>
@@ -542,7 +708,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                         </div>
                      )}
 
-                     {/* 空间关联展示 */}
                      {(selectedKeyword.relatedLocationIds || []).length > 0 && (
                         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md">
                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2 border-b border-gray-800 pb-2"><MapPin size={14} className="text-emerald-500"/> 空间关联</h4>
@@ -560,7 +725,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                         </div>
                      )}
 
-                     {/* 剧情关联展示 */}
                      {(selectedKeyword.relatedEventIds || []).length > 0 && (
                         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md">
                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2 border-b border-gray-800 pb-2"><Calendar size={14} className="text-orange-500"/> 剧情足迹</h4>
@@ -579,7 +743,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                         </div>
                      )}
 
-                     {/* 万物互联展示 */}
                      {(selectedKeyword.relatedKeywordIds || []).length > 0 && (
                         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md">
                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2 border-b border-gray-800 pb-2"><Link size={14} className="text-blue-500"/> 相关百科</h4>
@@ -597,12 +760,10 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                         </div>
                      )}
 
-                     {/* 附件管理 */}
                      {selectedKeyword.attachments && selectedKeyword.attachments.length > 0 && (
                         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md"><h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2 border-b border-gray-800 pb-2"><Paperclip size={14} /> 附件资料</h4><AttachmentManager attachments={selectedKeyword.attachments} onUpdate={() => {}} readOnly /></div>
                      )}
 
-                     {/* 关联人物与系统引用 */}
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5 shadow-md flex flex-col">
                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2 border-b border-gray-800 pb-2"><User size={14} className="text-indigo-400"/> 关联人物</h4>
@@ -639,7 +800,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                   </div>
                </div>
 
-               {/* 注释右侧边栏 */}
                {showNotes && noteLayout === 'SIDE' && (
                   <div className="w-[350px] border-l border-gray-800 bg-gray-900/20 overflow-y-auto scroll-smooth custom-scrollbar relative">
                      <div className="p-4 border-b border-gray-800 bg-gray-900/40 sticky top-0 z-20 backdrop-blur">

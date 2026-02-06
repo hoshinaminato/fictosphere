@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
-import { Project, Keyword, KeywordCategory, KeywordCategoryLabels, Attribute, Attachment } from '../types';
-import { Book, Search, Plus, Tag, Edit3, Trash2, BookOpen, Scroll, Shield, Zap, MapPin, Box, Check, X, User, Calendar, Link, UserPlus, Quote, AlertTriangle, Paperclip, ChevronRight, ChevronDown, CornerDownRight, FolderTree, GitBranch, FileText, MessageSquare, Type } from 'lucide-react';
+import { Project, Keyword, KeywordCategory, KeywordCategoryLabels, Attribute, Attachment, AnnotationDefinition } from '../types';
+import { Book, Search, Plus, Tag, Edit3, Trash2, BookOpen, Scroll, Shield, Zap, MapPin, Box, Check, X, User, Calendar, Link, UserPlus, Quote, AlertTriangle, Paperclip, ChevronRight, ChevronDown, ChevronUp, CornerDownRight, FolderTree, GitBranch, FileText, MessageSquare, Type, Maximize2, Minimize2, Dna, History, Layers, ScrollText } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { AttachmentManager } from './AttachmentManager';
 import { WikiTreeCanvas } from './WikiTreeCanvas';
@@ -33,9 +34,13 @@ const WikiTreeNode: React.FC<{
     switch(cat) {
       case 'ITEM': return <Box size={12} />;
       case 'FACTION': return <Shield size={12} />;
-      case 'SPELL': return <Zap size={12} />;
+      case 'ABILITY': return <Zap size={12} />;
       case 'TERM': return <BookOpen size={12} />;
-      case 'LOCATION_LORE': return <MapPin size={12} />;
+      case 'GEOGRAPHY': return <MapPin size={12} />;
+      case 'CULTURE': return <ScrollText size={12} />;
+      case 'SPECIES': return <Dna size={12} />;
+      case 'HISTORY': return <History size={12} />;
+      case 'SYSTEM': return <Layers size={12} />;
       default: return <Tag size={12} />;
     }
   };
@@ -96,6 +101,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMaxEditing, setIsMaxEditing] = useState(false); // 全屏编辑模式
   const [showTreeView, setShowTreeView] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<KeywordCategory | 'ALL'>('ALL');
@@ -111,6 +117,9 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
   const [showRuby, setShowRuby] = useState(true);
   const [showNotes, setShowNotes] = useState(true);
   const [noteLayout, setNoteLayout] = useState<'HOVER' | 'SIDE'>('SIDE');
+  
+  // 附件收起/展开状态
+  const [isAttachmentsExpanded, setIsAttachmentsExpanded] = useState(false);
 
   const keywords = project.keywords || [];
   const selectedKeyword = keywords.find(k => k.id === selectedId);
@@ -127,13 +136,40 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
   }, [selectedKeyword, keywords]);
 
   const filteredKeywords = useMemo(() => {
+    if (!searchQuery.trim() && activeCategory === 'ALL') return keywords;
+
+    const q = searchQuery.toLowerCase();
+    const annos = project.annotations || {};
+
     return keywords.filter(k => {
-      const matchesSearch = k.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            k.tags?.some(t => t.includes(searchQuery));
+      // 1. 基本信息匹配 (名称/标签)
+      const matchesBasic = k.name.toLowerCase().includes(q) || 
+                            k.tags?.some(t => t.toLowerCase().includes(q));
+      
+      // 2. 详细描述匹配
+      const matchesDesc = k.description?.toLowerCase().includes(q);
+
+      // 3. 注释内容匹配 (递归查找引用的 annoId 并检查其内容)
+      let matchesNotes = false;
+      if (k.description && k.description.includes('{id:anno-')) {
+         const regex = /\{id:(anno-[a-z0-9]+)\}/g;
+         let match;
+         while ((match = regex.exec(k.description)) !== null) {
+            const annoId = match[1];
+            const anno = annos[annoId];
+            if (anno && (anno.note?.toLowerCase().includes(q) || anno.ruby?.toLowerCase().includes(q))) {
+               matchesNotes = true;
+               break;
+            }
+         }
+      }
+
+      const matchesSearch = matchesBasic || matchesDesc || matchesNotes;
       const matchesCategory = activeCategory === 'ALL' || k.category === activeCategory;
+      
       return matchesSearch && matchesCategory;
     });
-  }, [keywords, searchQuery, activeCategory]);
+  }, [keywords, searchQuery, activeCategory, project.annotations]);
 
   const isTreeViewList = !searchQuery && activeCategory === 'ALL';
   
@@ -218,6 +254,8 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setIsEditing(false);
+    setIsMaxEditing(false);
+    setIsAttachmentsExpanded(false); // 切换词条时重置附件展开状态
     expandPathToId(id);
   };
 
@@ -241,6 +279,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
     });
     setSelectedId(newId);
     setIsEditing(true);
+    setIsMaxEditing(false);
     setShowTreeView(false);
   };
 
@@ -256,6 +295,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
        attachments: selectedKeyword.attachments || []
     });
     setIsEditing(true);
+    setIsMaxEditing(false);
     setShowTreeView(false);
   };
 
@@ -277,6 +317,7 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
     };
     saveKeyword(newKeyword);
     setIsEditing(false);
+    setIsMaxEditing(false);
     setSelectedId(newKeyword.id);
     if (newKeyword.parentId) expandPathToId(newKeyword.parentId);
   };
@@ -298,44 +339,108 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
         onUpdateProject({ ...project, keywords: newKeywords });
         setSelectedId(null);
         setIsEditing(false);
+        setIsMaxEditing(false);
         setDeleteConfirmId(null);
      }
   };
 
-  // 处理查看模式下的快速标注
-  const handleQuickAnnotation = (original: string, replacement: string) => {
+  const handleAddAnnotation = (startIndex: number, oldLength: number, anchorText: string, ruby?: string, note?: string) => {
     if (!selectedKeyword) return;
+    const annoId = 'anno-' + Math.random().toString(36).substr(2, 9);
+    const newAnnos = { ...(project.annotations || {}) };
+    newAnnos[annoId] = { id: annoId, ruby, note, imageUrls: [] };
+    const replacement = `[${anchorText}]{id:${annoId}}`;
     const desc = selectedKeyword.description || '';
-    const newDesc = desc.replace(original, replacement);
-    if (newDesc !== desc) {
-       const updated: Keyword = { ...selectedKeyword, description: newDesc };
-       saveKeyword(updated);
-    }
+    const newDesc = desc.substring(0, startIndex) + replacement + desc.substring(startIndex + oldLength);
+    const updatedProject = {
+       ...project,
+       annotations: newAnnos,
+       keywords: keywords.map(k => k.id === selectedId ? { ...k, description: newDesc } : k)
+    };
+    onUpdateProject(updatedProject);
   };
 
-  // 处理对已有标注内容的更新
-  const handleUpdateNote = (oldFull: string, newFull: string) => {
-    if (!selectedKeyword) return;
-    const desc = selectedKeyword.description || '';
-    const newDesc = desc.replace(oldFull, newFull);
-    if (newDesc !== desc) {
-      const updated: Keyword = { ...selectedKeyword, description: newDesc };
-      saveKeyword(updated);
-    }
+  /**
+   * 更新注释逻辑：同步更新项目标注库，并确保词条的关联列表包含所有注释提及的实体
+   */
+  const handleUpdateAnnotation = (id: string, ruby?: string, note?: string, newItemUrls?: string[], personIds?: string[], locationIds?: string[], eventIds?: string[], keywordIds?: string[]) => {
+      if (!selectedKeyword) return;
+      
+      // 1. 更新标注定义
+      const newAnnos = { ...(project.annotations || {}) };
+      newAnnos[id] = { 
+          ...newAnnos[id], 
+          id, ruby, note, 
+          imageUrls: newItemUrls || [],
+          personIds: personIds || [],
+          locationIds: locationIds || [],
+          eventIds: eventIds || [],
+          keywordIds: keywordIds || []
+      };
+
+      // 2. 扫描该词条描述中引用的所有标注，提取所有关联 ID
+      const regex = /\{id:(anno-[a-z0-9]+)\}/g;
+      const desc = selectedKeyword.description || '';
+      const allAnnoIds: string[] = [];
+      let match;
+      while ((match = regex.exec(desc)) !== null) {
+          allAnnoIds.push(match[1]);
+      }
+
+      // 汇总所有关联
+      const aggregate = (field: keyof AnnotationDefinition) => {
+          const set = new Set<string>();
+          allAnnoIds.forEach(aid => {
+              const anno = newAnnos[aid];
+              if (anno && Array.isArray(anno[field])) {
+                  (anno[field] as string[]).forEach(val => set.add(val));
+              }
+          });
+          return Array.from(set);
+      };
+
+      const linkedPersons = aggregate('personIds');
+      const linkedLocations = aggregate('locationIds');
+      const linkedEvents = aggregate('eventIds');
+      const linkedKeywords = aggregate('keywordIds');
+
+      // 3. 将新关联合并到词条本身的关联列表中（取并集）
+      const merge = (existing: string[] | undefined, linked: string[]) => {
+          const base = new Set(existing || []);
+          linked.forEach(l => base.add(l));
+          return Array.from(base);
+      };
+
+      const updatedKeywords = keywords.map(k => {
+          if (k.id === selectedId) {
+              return {
+                  ...k,
+                  relatedPersonIds: merge(k.relatedPersonIds, linkedPersons),
+                  relatedLocationIds: merge(k.relatedLocationIds, linkedLocations),
+                  relatedEventIds: merge(k.relatedEventIds, linkedEvents),
+                  relatedKeywordIds: merge(k.relatedKeywordIds, linkedKeywords)
+              };
+          }
+          return k;
+      });
+
+      onUpdateProject({ 
+          ...project, 
+          annotations: newAnnos,
+          keywords: updatedKeywords 
+      });
   };
 
-  // 处理对标注语法的移除（剥离语法保留文本）
-  const handleRemoveAnnotation = (oldFull: string, anchorText: string) => {
+  const handleRemoveAnnotation = (startIndex: number, oldLength: number, anchorText: string, annoId?: string) => {
     if (!selectedKeyword) return;
     const desc = selectedKeyword.description || '';
-    const newDesc = desc.replace(oldFull, anchorText);
-    if (newDesc !== desc) {
-      const updated: Keyword = { ...selectedKeyword, description: newDesc };
-      saveKeyword(updated);
-    }
+    const newDesc = desc.substring(0, startIndex) + anchorText + desc.substring(startIndex + oldLength);
+    onUpdateProject({
+        ...project,
+        keywords: keywords.map(k => k.id === selectedId ? { ...k, description: newDesc } : k)
+    });
   };
 
-  // 侧栏注释编辑器发起的上传资产请求
   const handleNoteUploadFile = async (file: File): Promise<Attachment> => {
     if (!selectedKeyword) throw new Error("No active keyword");
     
@@ -351,7 +456,6 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
       });
     }
 
-    // 将新图片作为附件永久保存到词条中
     const newAttachment: Attachment = {
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
@@ -367,32 +471,30 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
       attachments: [...(selectedKeyword.attachments || []), newAttachment]
     };
     saveKeyword(updated);
-
     return newAttachment;
   };
 
   const insertSyntax = (syntaxType: 'ruby' | 'note') => {
-    const textarea = document.getElementById('wiki-editor-textarea') as HTMLTextAreaElement;
+    const textareaId = isMaxEditing ? 'wiki-editor-textarea-max' : 'wiki-editor-textarea';
+    const textarea = document.getElementById(textareaId) as HTMLTextAreaElement;
     if (!textarea) return;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const textValue = textarea.value;
     const selection = textValue.substring(start, end);
     
-    let replacement = '';
-    if (syntaxType === 'ruby') {
-      replacement = `[${selection || '文字'}]{ruby:注音}`;
-    } else {
-      replacement = `[${selection || '文字或图片地址'}]{note:注释内容}`;
-    }
+    const annoId = 'anno-' + Math.random().toString(36).substr(2, 9);
+    const newAnnos = { ...(project.annotations || {}) };
+    newAnnos[annoId] = { id: annoId, ruby: syntaxType === 'ruby' ? '注音' : undefined, note: syntaxType === 'note' ? '注释内容' : undefined, imageUrls: [] };
+    onUpdateProject({ ...project, annotations: newAnnos });
 
+    const replacement = `[${selection || '文字'}]{id:${annoId}}`;
     const newValue = textValue.substring(0, start) + replacement + textValue.substring(end);
     setFormData({ ...formData, description: newValue });
     
     setTimeout(() => {
       textarea.focus();
-      const newPos = start + (syntaxType === 'ruby' ? replacement.length - 3 : replacement.length - 5);
-      textarea.setSelectionRange(newPos, newPos + (syntaxType === 'ruby' ? 2 : 4));
+      textarea.setSelectionRange(start + replacement.indexOf(annoId), start + replacement.indexOf(annoId) + annoId.length);
     }, 0);
   };
 
@@ -400,9 +502,13 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
     switch(cat) {
       case 'ITEM': return <Box size={14} />;
       case 'FACTION': return <Shield size={14} />;
-      case 'SPELL': return <Zap size={14} />;
+      case 'ABILITY': return <Zap size={14} />;
       case 'TERM': return <BookOpen size={14} />;
-      case 'LOCATION_LORE': return <MapPin size={14} />;
+      case 'GEOGRAPHY': return <MapPin size={14} />;
+      case 'CULTURE': return <ScrollText size={14} />;
+      case 'SPECIES': return <Dna size={14} />;
+      case 'HISTORY': return <History size={14} />;
+      case 'SYSTEM': return <Layers size={14} />;
       default: return <Tag size={14} />;
     }
   };
@@ -447,12 +553,12 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
       <div className="w-80 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 shadow-2xl z-20">
          <div className="p-4 border-b border-gray-800">
             <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
-               <Book size={20} className="text-blue-500" />
+               < Book size={20} className="text-blue-500" />
                万物百科
             </h2>
             <div className="relative">
                <Search className="absolute left-3 top-2.5 text-gray-500" size={16} />
-               <input className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 pl-9 pr-4 text-sm focus:border-blue-500 outline-none" placeholder="搜索词条..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+               <input className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 pl-9 pr-4 text-sm focus:border-blue-500 outline-none" placeholder="搜索名称/标签/描述/注释..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
          </div>
          <div className="flex gap-2 p-2 overflow-x-auto border-b border-gray-800 no-scrollbar">
@@ -595,9 +701,49 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                      </section>
 
                      <section>
-                       <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">设定描述</label>
+                       <div className="flex justify-between items-center mb-2">
+                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">设定描述</label>
+                         <button 
+                           onClick={() => setIsMaxEditing(true)}
+                           className="text-blue-400 hover:text-blue-300 flex items-center gap-1 text-[10px] font-bold"
+                         >
+                           <Maximize2 size={12}/> 全屏编辑
+                         </button>
+                       </div>
                        <textarea id="wiki-editor-textarea" className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white h-48 focus:border-blue-500 outline-none resize-none font-mono text-sm leading-relaxed" value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="输入设定详情..." />
                      </section>
+
+                     {/* 全屏编辑器层 */}
+                     {isMaxEditing && (
+                        <div className="fixed inset-0 z-[100] bg-gray-950 flex flex-col animate-fade-in">
+                           <div className="h-14 border-b border-gray-800 flex items-center justify-between px-6 bg-gray-900 shrink-0">
+                              <div className="flex items-center gap-4">
+                                 <h4 className="font-bold text-gray-300">沉浸式编辑: {formData.name}</h4>
+                                 <div className="flex gap-2">
+                                    <button onClick={() => insertSyntax('ruby')} className="px-3 py-1 bg-gray-800 hover:bg-orange-900/30 text-orange-400 border border-gray-700 rounded text-xs font-bold flex items-center gap-1"><Type size={12}/> 添加注音</button>
+                                    <button onClick={() => insertSyntax('note')} className="px-3 py-1 bg-gray-800 hover:bg-blue-900/30 text-blue-400 border border-gray-700 rounded text-xs font-bold flex items-center gap-1"><MessageSquare size={12}/> 添加注释</button>
+                                 </div>
+                              </div>
+                              <button 
+                                onClick={() => setIsMaxEditing(false)}
+                                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-white flex items-center gap-2 text-sm font-bold border border-gray-600 transition-all"
+                              >
+                                 <Minimize2 size={16}/> 退出全屏 (Esc)
+                              </button>
+                           </div>
+                           <div className="flex-1 p-8 md:px-16 lg:px-32 bg-gray-950 relative">
+                              <textarea 
+                                id="wiki-editor-textarea-max" 
+                                className="w-full h-full bg-transparent border-none text-white text-lg focus:ring-0 outline-none resize-none font-mono leading-loose placeholder-gray-800"
+                                value={formData.description || ''} 
+                                onChange={e => setFormData({ ...formData, description: e.target.value })} 
+                                placeholder="在这里开始你的史诗创作..."
+                                autoFocus
+                                onKeyDown={e => e.key === 'Escape' && setIsMaxEditing(false)}
+                              />
+                           </div>
+                        </div>
+                     )}
 
                      <section className="bg-gray-800/20 p-6 rounded-xl border border-gray-800">
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2 tracking-wider">
@@ -685,11 +831,22 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                              showRuby={showRuby} 
                              showNotes={showNotes} 
                              noteLayout={noteLayout} 
+                             annotations={project.annotations || {}}
                              attachments={selectedKeyword.attachments}
-                             onAddAnnotation={handleQuickAnnotation}
-                             onUpdateNote={handleUpdateNote}
+                             onAddAnnotation={handleAddAnnotation}
+                             onUpdateNote={handleUpdateAnnotation}
                              onRemoveAnnotation={handleRemoveAnnotation}
                              onUploadFile={handleNoteUploadFile}
+                             // 注入实体选项
+                             personOptions={personOptions}
+                             locationOptions={locationOptions}
+                             eventOptions={eventOptions}
+                             keywordOptions={keywordSelectOptions}
+                             // 注入跳转
+                             onJumpToPerson={onJumpToPerson}
+                             onJumpToLocation={onJumpToLocation}
+                             onJumpToEvent={onJumpToEvent}
+                             onJumpToKeyword={handleSelect}
                            />
                         </div>
                      </div>
@@ -761,7 +918,25 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                      )}
 
                      {selectedKeyword.attachments && selectedKeyword.attachments.length > 0 && (
-                        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-md"><h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2 border-b border-gray-800 pb-2"><Paperclip size={14} /> 附件资料</h4><AttachmentManager attachments={selectedKeyword.attachments} onUpdate={() => {}} readOnly /></div>
+                        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 md:p-6 shadow-md">
+                           <div 
+                              className="flex items-center justify-between cursor-pointer group"
+                              onClick={() => setIsAttachmentsExpanded(!isAttachmentsExpanded)}
+                           >
+                              <h4 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2 border-none pb-0 tracking-wider">
+                                 <Paperclip size={14} className="text-blue-400" /> 附件资料 ({selectedKeyword.attachments.length})
+                              </h4>
+                              <div className="text-gray-500 group-hover:text-white transition-colors">
+                                 {isAttachmentsExpanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                              </div>
+                           </div>
+                           
+                           {isAttachmentsExpanded && (
+                              <div className="mt-4 pt-4 border-t border-gray-800 animate-fade-in">
+                                 <AttachmentManager attachments={selectedKeyword.attachments} onUpdate={() => {}} readOnly />
+                              </div>
+                           )}
+                        </div>
                      )}
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -799,20 +974,15 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
                      </div>
                   </div>
                </div>
-
+               
                {showNotes && noteLayout === 'SIDE' && (
-                  <div className="w-[350px] border-l border-gray-800 bg-gray-900/20 overflow-y-auto scroll-smooth custom-scrollbar relative">
-                     <div className="p-4 border-b border-gray-800 bg-gray-900/40 sticky top-0 z-20 backdrop-blur">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest"><MessageSquare size={14} className="text-blue-500"/> 词条注释</div>
-                     </div>
-                     <div id="wiki-side-notes-container" className="p-4 space-y-4 pb-32" />
-                  </div>
+                  <div id="wiki-side-notes-container" className="w-80 border-l border-gray-800 overflow-y-auto p-4 bg-gray-900/30" />
                )}
             </div>
             )
          ) : (
             <div className="h-full flex flex-col items-center justify-center text-gray-600">
-               <BookOpen size={64} className="mb-4 opacity-20" />
+               < BookOpen size={64} className="mb-4 opacity-20" />
                <p>选择左侧词条查看详情</p>
                <p className="text-sm mt-2">或点击“新建词条”创建设定</p>
             </div>

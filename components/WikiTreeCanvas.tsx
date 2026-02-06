@@ -123,11 +123,16 @@ export const WikiTreeCanvas: React.FC<WikiTreeCanvasProps> = ({
       .attr("rx", 2)
       .attr("fill", (d: any) => {
           switch(d.data.category) {
-            case 'FACTION': return '#3b82f6';
-            case 'ITEM': return '#10b981';
-            case 'SPELL': return '#f59e0b';
-            case 'LOCATION_LORE': return '#ef4444';
-            default: return '#6366f1';
+            case 'FACTION': return '#3b82f6'; // Blue
+            case 'ITEM': return '#10b981';    // Emerald
+            case 'ABILITY': return '#f59e0b'; // Amber
+            case 'GEOGRAPHY': return '#ef4444'; // Red
+            case 'TERM': return '#6366f1';    // Indigo
+            case 'CULTURE': return '#ec4899';  // Pink
+            case 'SPECIES': return '#8b5cf6';  // Violet
+            case 'HISTORY': return '#64748b';  // Slate
+            case 'SYSTEM': return '#06b6d4';   // Cyan
+            default: return '#94a3b8';
           }
       });
 
@@ -145,11 +150,16 @@ export const WikiTreeCanvas: React.FC<WikiTreeCanvasProps> = ({
   return (
     <div className="w-full h-full bg-blueprint-900/50 blueprint-grid relative">
       <svg ref={svgRef} width={width} height={height} className="w-full h-full" />
-      <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-md border border-gray-800 p-2 rounded text-[10px] text-gray-500 space-y-1">
+      <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-md border border-gray-800 p-2 rounded text-[10px] text-gray-500 grid grid-cols-2 gap-x-4 gap-y-1">
          <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" /> 组织/势力</div>
-         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500" /> 物品</div>
+         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500" /> 物品/道具</div>
          <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500" /> 功法/技能</div>
-         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /> 地点设定</div>
+         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /> 地理/疆域</div>
+         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-indigo-500" /> 专有名词</div>
+         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-pink-500" /> 习俗/文化</div>
+         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-violet-500" /> 种族/生物</div>
+         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-500" /> 历史/传说</div>
+         <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-cyan-500" /> 体系/规则</div>
       </div>
     </div>
   );

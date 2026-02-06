@@ -39,6 +39,21 @@ export const validateProject = (input: any): ValidationResult => {
   if (!Array.isArray(data.events)) data.events = [];
   if (!Array.isArray(data.keywords)) data.keywords = [];
 
+  // 3.1 清洗 Annotations (处理多图迁移)
+  if (data.annotations && typeof data.annotations === 'object') {
+     Object.keys(data.annotations).forEach(key => {
+        const anno = data.annotations[key];
+        if (anno) {
+           // 迁移：如果只有旧的单图字段，转移到数组中
+           if (!anno.imageUrls) {
+              anno.imageUrls = anno.imageUrl ? [anno.imageUrl] : [];
+           }
+        }
+     });
+  } else {
+     data.annotations = {};
+  }
+
   // 4. 清洗 Genealogy 节点
   data.data.nodes = data.data.nodes.filter((n: any) => n && n.id).map((n: any) => ({
      ...n,

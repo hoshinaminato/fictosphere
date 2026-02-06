@@ -266,6 +266,17 @@ export interface ProjectTimeConfig {
   label?: string;
 }
 
+export interface AnnotationDefinition {
+  id: string;
+  ruby?: string;
+  note?: string;
+  imageUrls?: string[];
+  personIds?: string[];
+  locationIds?: string[];
+  eventIds?: string[];
+  keywordIds?: string[];
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -275,6 +286,7 @@ export interface Project {
   world: WorldData;
   events: CalendarEvent[];
   keywords: Keyword[];
+  annotations?: Record<string, AnnotationDefinition>; // 新增标注存储区
   globalAttributeKeys?: string[];
   relationDefinitions?: RelationDefinition[];
   lastAccessed?: string;
@@ -323,14 +335,18 @@ export interface ExportData {
 
 export type ThemeMode = 'BLUEPRINT' | 'INK' | 'CYBERPUNK' | 'CARTOON' | 'SCRAPBOOK';
 
-export type KeywordCategory = 'ITEM' | 'FACTION' | 'SPELL' | 'TERM' | 'LOCATION_LORE';
+export type KeywordCategory = 'ITEM' | 'FACTION' | 'ABILITY' | 'TERM' | 'GEOGRAPHY' | 'CULTURE' | 'SPECIES' | 'HISTORY' | 'SYSTEM';
 
 export const KeywordCategoryLabels: Record<KeywordCategory, string> = {
   ITEM: '物品/道具',
   FACTION: '组织/势力',
-  SPELL: '功法/技能',
-  TERM: '专有名词',
-  LOCATION_LORE: '地点传说'
+  ABILITY: '功法/技能/能力',
+  TERM: '专有名词/设定',
+  GEOGRAPHY: '地理/地点/疆域',
+  CULTURE: '习俗/文化/节日',
+  SPECIES: '种族/物种/生物',
+  HISTORY: '历史/传说/事件',
+  SYSTEM: '体系/等级/规则'
 };
 
 export interface Keyword {

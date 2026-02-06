@@ -120,15 +120,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     multiSelectionRef.current = multiSelection;
   }, [multiSelection]);
 
-  // Fix: Narrowed sid and explicitly cast Set type if needed.
+  // Fix: Use more robust narrowing for selectedPersonId to resolve 'unknown' type errors and simplify state updates.
   useEffect(() => {
-    // Fix: Using typeof check to ensure selectedPersonId is a string and avoid 'unknown' type issues
-    if (typeof selectedPersonId === 'string' && selectedPersonId !== '') {
-       const sid: string = selectedPersonId;
+    if (selectedPersonId && typeof selectedPersonId === 'string') {
+       const sid = selectedPersonId;
        setMultiSelection((prev) => {
-          const p = prev as Set<string>;
-          if (p.size > 1 && p.has(sid)) return p;
-          return new Set<string>([sid]);
+          if (prev.size === 1 && prev.has(sid)) return prev;
+          return new Set([sid]);
        });
     }
   }, [selectedPersonId]);
@@ -264,7 +262,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
      const selectedIds = multiSelectionRef.current;
      const targets: Person[] = [];
      if (selectedIds.size > 0) {
-        allNodes.forEach(n => { if (selectedIds.has(n.id)) { n.fx = null; n.fy = null; targets.push(n); } });
+        allNodes.forEach(n => { if (selectedIds.has(n.id)) { n.fx = null; n.fx = null; n.fy = null; targets.push(n); } });
      } else {
         if (onLayoutResetRef.current) onLayoutResetRef.current();
         allNodes.forEach(n => { n.fx = null; n.fy = null; });
@@ -527,9 +525,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
           update.select('.name-label').text(d => d.name); 
           
           const genderG = update.select('.gender-badge');
-          genderG.style('display', d => d.gender === Gender.UNKNOWN ? 'none' : 'block');
-          genderG.select('circle').attr('fill', d => d.gender === Gender.MALE ? '#3b82f6' : '#ec4899');
-          genderG.select('text').text(d => d.gender === Gender.MALE ? '♂' : '♀');
+          genderG.style('display', (d: Person) => d.gender === Gender.UNKNOWN ? 'none' : 'block');
+          genderG.select('circle').attr('fill', (d: Person) => d.gender === Gender.MALE ? '#3b82f6' : '#ec4899');
+          genderG.select('text').text((d: Person) => d.gender === Gender.MALE ? '♂' : '♀');
 
           return update; 
         }
@@ -682,8 +680,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
          {!isGenealogyMode && (
            <>
-             <button onClick={() => setMultiSelection(new Set(data.nodes.map(n => n.id)))} className="pointer-events-auto flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white px-3 py-1.5 rounded border border-gray-600 shadow-lg transition-colors"><BoxSelect size={14}/> 全选</button>
-             <button onClick={handleTidy} className="pointer-events-auto flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white px-3 py-1.5 rounded border border-gray-600 shadow-lg transition-colors" title={multiSelection.size > 0 ? "释放选中节点的固定位置" : "释放所有固定节点，重置布局"}><Unlock size={14}/> {multiSelection.size > 0 ? "释放选中" : "释放全部"}</button>
+             <button onClick={() => setMultiSelection(new Set(data.nodes.map(n => n.id)))} className="pointer-events-auto flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white px-3 py-1.5 rounded border border-gray-700 shadow-lg transition-colors"><BoxSelect size={14}/> 全选</button>
+             <button onClick={handleTidy} className="pointer-events-auto flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white px-3 py-1.5 rounded border border-gray-700 shadow-lg transition-colors" title={multiSelection.size > 0 ? "释放选中节点的固定位置" : "释放所有固定节点，重置布局"}><Unlock size={14}/> {multiSelection.size > 0 ? "释放选中" : "释放全部"}</button>
            </>
          )}
         <span className={`px-2 py-1 rounded font-bold ${multiSelection.size > 1 ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700' : 'bg-gray-900/50'}`}>选中: {multiSelection.size} / {data.nodes.length}</span>

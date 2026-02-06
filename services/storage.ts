@@ -1,5 +1,4 @@
 
-
 import { Project } from '../types';
 import { initialProjects } from './mockData';
 
@@ -49,7 +48,8 @@ export const loadAllData = async () => {
              world: p.world || { id: 'default', name: 'Default World', nodes: [], edges: [] },
              events: p.events || [],
              keywords: p.keywords || [],
-             relationDefinitions: p.relationDefinitions || [] // Added migration
+             relationDefinitions: p.relationDefinitions || [],
+             annotations: p.annotations || {} // Added migration
         }));
 
         resolve({

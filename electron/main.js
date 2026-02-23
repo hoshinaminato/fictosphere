@@ -1,5 +1,5 @@
 
-const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -267,6 +267,13 @@ ipcMain.handle('import-project', async (event) => {
 });
 
 ipcMain.handle('get-asset-path', () => getAssetsPath());
+
+ipcMain.handle('open-asset-path', async () => {
+  const p = getAssetsPath();
+  if (fs.existsSync(p)) {
+    shell.openPath(p);
+  }
+});
 
 ipcMain.handle('select-asset-path', async () => {
   try {

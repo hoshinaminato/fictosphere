@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Person, ViewMode, RelationType, RelationLabels, Project, Gender, GenderLabels, Relationship, Attachment, RelationCategories, RelationDefinition, Keyword, TimeSystem, RelationCategory } from '../types';
-import { Search, Activity, Sparkles, ChevronDown, ChevronRight, GitGraph, Network, Trash2, Save, UserPlus, Users, Link, Plus, X, Settings, Maximize2, Minimize2, Tag, Upload, Paperclip, FileImage, ExternalLink, Check, AlertTriangle, Target, Edit3, ArrowRight, ArrowLeft, ArrowUpDown, CheckSquare, Square, Filter, Book, Calendar, Clock, Power } from 'lucide-react';
+import { Search, Activity, Sparkles, ChevronDown, ChevronRight, GitGraph, Network, Trash2, Save, UserPlus, Users, Link, Plus, X, Settings, Maximize2, Minimize2, Tag, Upload, Paperclip, FileImage, ExternalLink, Check, AlertTriangle, Target, Edit3, ArrowRight, ArrowLeft, ArrowUpDown, CheckSquare, Square, Filter, Book, Calendar, Clock, Power, BookOpen } from 'lucide-react';
 import { analyzeRelationship } from '../services/geminiService';
 import { SearchableSelect } from './SearchableSelect';
 import { AttachmentManager } from './AttachmentManager';
@@ -35,6 +35,7 @@ interface SidebarProps {
   keywords?: Keyword[];
   selectedKeywordId?: string | null;
   onSelectKeyword?: (keywordId: string | null) => void;
+  onJumpToWiki?: (keywordId: string) => void;
 
   // CRUD Actions
   onUpdatePerson: (person: Person) => void;
@@ -76,6 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   keywords = [],
   selectedKeywordId,
   onSelectKeyword,
+  onJumpToWiki,
   onUpdatePerson,
   onDeletePerson,
   onAddPerson,
@@ -196,11 +198,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return families.filter(f => f.toLowerCase().includes(familySearchTerm.toLowerCase()));
   }, [families, familySearchTerm]);
 
-  // Filter Keywords for Selection (Only those with associated people)
-  const validKeywords = useMemo(() => {
+  // Map keywords to Option format for SearchableSelect
+  const validKeywordOptions = useMemo(() => {
      return keywords
        .filter(k => k.relatedPersonIds && k.relatedPersonIds.length > 0)
-       .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+       .map(k => ({
+         label: k.name,
+         value: k.id,
+         group: k.category,
+         sub: `${k.relatedPersonIds?.length || 0} 人关联`
+       }))
+       .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
   }, [keywords]);
 
   // Existing Relationships Calculation (For Add Mode)
@@ -760,40 +768,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!isAdding && !isEditing && !searchTerm && (
         <div>
           {/* Wiki Group Selector */}
-          {onSelectKeyword && (
-             <div className="mb-4 border-b border-gray-800 pb-4">
-                <div className="flex items-center justify-between mb-1">
-                   <label className="text-xs text-gray-500 font-bold uppercase flex items-center gap-1">
-                      <Book size={10}/> Wiki 词条框选
-                   </label>
-                   {selectedKeywordId && (
+          <div className="mb-4 border-b border-gray-800 pb-4">
+             <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-gray-500 font-bold uppercase flex items-center gap-1">
+                   <Book size={10}/> Wiki 词条框选
+                </label>
+                {selectedKeywordId && (
+                   <div className="flex items-center gap-2">
                       <button 
-                         onClick={() => onSelectKeyword(null)} 
+                         onClick={() => onJumpToWiki?.(selectedKeywordId)}
+                         className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+                         title="跳转到百科详情"
+                      >
+                         <BookOpen size={10}/> 详情
+                      </button>
+                      <button 
+                         onClick={() => onSelectKeyword?.(null)} 
                          className="text-[10px] text-red-400 hover:text-red-300"
                       >
                          清除
                       </button>
-                   )}
-                </div>
-                <select 
-                   className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-300 outline-none focus:border-blue-500"
-                   value={selectedKeywordId || ''}
-                   onChange={(e) => onSelectKeyword(e.target.value || null)}
-                >
-                   <option value="">无 (None)</option>
-                   {validKeywords.length === 0 ? (
-                      <option disabled>无关联词条 (需先在百科中关联人物)</option>
-                   ) : (
-                      validKeywords.map(k => (
-                         <option key={k.id} value={k.id}>{k.name} ({k.relatedPersonIds?.length || 0})</option>
-                      ))
-                   )}
-                </select>
-                <div className="text-[11px] text-gray-600 mt-1 italic">
-                   仅显示已关联人物的词条。选择后将高亮框选相关人员。
-                </div>
+                   </div>
+                )}
              </div>
-          )}
+             <SearchableSelect 
+                options={validKeywordOptions}
+                value={selectedKeywordId || ''}
+                onChange={(val) => onSelectKeyword?.(val || null)}
+                placeholder="搜索词条以框选..."
+                darker={true}
+             />
+             <div className="text-[11px] text-gray-600 mt-1 italic">
+                {selectedKeywordId ? '已启用高亮框选。' : '选择已关联人物的词条进行框选。'}
+             </div>
+          </div>
 
           {/* Family Filter */}
           <div className="flex items-center justify-between mb-2">

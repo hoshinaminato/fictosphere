@@ -120,11 +120,12 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     multiSelectionRef.current = multiSelection;
   }, [multiSelection]);
 
-  // Fix: Use more robust narrowing for selectedPersonId to resolve 'unknown' type errors and simplify state updates.
+  // Fix: Use more robust narrowing and type assertion for selectedPersonId to resolve 'unknown' type errors inside the callback.
   useEffect(() => {
-    if (selectedPersonId && typeof selectedPersonId === 'string') {
-       const sid = selectedPersonId;
-       setMultiSelection((prev) => {
+    if (typeof selectedPersonId === 'string' && selectedPersonId.length > 0) {
+       const sid: string = selectedPersonId;
+       setMultiSelection((prev: Set<string>) => {
+          // Check if selection is already correct to avoid unnecessary state updates
           if (prev.size === 1 && prev.has(sid)) return prev;
           return new Set([sid]);
        });
@@ -506,12 +507,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
           d.labelWidth = w; d.labelHeight = h;
         } catch(e) { rect.attr('width', 30).attr('height', 12).attr('x', -15).attr('y', -6); d.labelWidth = 30; d.labelHeight = 12; }
     });
-    const node = nodeLayer.selectAll<SVGGElement, Person>('g.node').data(nodes, (d: any) => d.id).join(enter => {
-          const g = enter.append('g').attr('class', 'node').attr('cursor', 'pointer'); g.attr('transform', d => d.x && d.y ? `translate(${d.x},${d.y})` : ''); g.append('circle').attr('class', 'selection-ring').attr('r', 28).attr('fill', 'none').attr('stroke', '#fbbf24').attr('stroke-width', 0).attr('opacity', 0);
-          g.append('clipPath').attr('id', d => `clip-${d.id}`).append('circle').attr('r', 20); g.append('circle').attr('class', 'node-circle').attr('r', 20).attr('fill', '#1f2937').attr('stroke-width', 2);
-          g.append('image').attr('xlink:href', d => d.avatar || '').attr('x', -20).attr('y', -20).attr('width', 40).attr('height', 40).attr('clip-path', d => `url(#clip-${d.id})`).attr('preserveAspectRatio', 'xMidYMid slice').style('display', d => d.avatar ? 'block' : 'none');
-          g.append('text').attr('dy', 5).attr('dx', 0).attr('text-anchor', 'middle').attr('fill', '#fff').attr('font-size', '12px').attr('font-weight', 'bold').attr('class', 'initial-text').text(d => d.name.charAt(0)).style('display', d => d.avatar ? 'none' : 'block');
-          g.append('text').attr('dy', 35).attr('text-anchor', 'middle').attr('fill', '#e5e7eb').attr('font-size', '10px').attr('class', 'name-label').text(d => d.name); 
+    
+    // --- 节点 Layer 操作 ---
+    const node = nodeLayer.selectAll<SVGGElement, Person>('g.node').data(nodes, (d: any) => d.id).join(
+        enter => {
+          const g = enter.append('g').attr('class', 'node').attr('cursor', 'pointer'); 
+          g.append('circle').attr('class', 'selection-ring').attr('r', 28).attr('fill', 'none').attr('stroke', '#fbbf24').attr('stroke-width', 0).attr('opacity', 0);
+          g.append('clipPath').attr('id', d => `clip-${d.id}`).append('circle').attr('r', 20); 
+          g.append('circle').attr('class', 'node-circle').attr('r', 20).attr('fill', '#1f2937').attr('stroke-width', 2);
+          g.append('image').attr('class', 'node-avatar').attr('x', -20).attr('y', -20).attr('width', 40).attr('height', 40).attr('clip-path', d => `url(#clip-${d.id})`).attr('preserveAspectRatio', 'xMidYMid slice');
+          g.append('text').attr('class', 'initial-text').attr('dy', 5).attr('dx', 0).attr('text-anchor', 'middle').attr('fill', '#fff').attr('font-size', '12px').attr('font-weight', 'bold');
+          g.append('text').attr('class', 'name-label').attr('dy', 35).attr('text-anchor', 'middle').attr('fill', '#e5e7eb').attr('font-size', '10px'); 
 
           // 性别标识
           const genderG = g.append('g').attr('class', 'gender-badge').attr('transform', 'translate(14, 14)');
@@ -519,17 +525,6 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
           genderG.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central').attr('font-size', '9px').attr('font-weight', 'bold').attr('fill', '#fff');
 
           return g;
-        }, update => { 
-          update.select('image').attr('xlink:href', d => d.avatar || '').style('display', d => d.avatar ? 'block' : 'none'); 
-          update.select('.initial-text').text(d => d.name.charAt(0)).style('display', d => d.avatar ? 'none' : 'block'); 
-          update.select('.name-label').text(d => d.name); 
-          
-          const genderG = update.select('.gender-badge');
-          genderG.style('display', (d: Person) => d.gender === Gender.UNKNOWN ? 'none' : 'block');
-          genderG.select('circle').attr('fill', (d: Person) => d.gender === Gender.MALE ? '#3b82f6' : '#ec4899');
-          genderG.select('text').text((d: Person) => d.gender === Gender.MALE ? '♂' : '♀');
-
-          return update; 
         }
       )
       .on('click', (event, d: any) => { 
@@ -539,6 +534,26 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
          else { if (currentSelection.has(d.id) && currentSelection.size > 1) return; setMultiSelection(new Set([d.id])); onNodeClickRef.current(d); }
          isDragMovedRef.current = false;
       });
+
+    // --- 应用节点属性更新 (确保新入节点立即生效) ---
+    node.select('.node-avatar')
+        .attr('xlink:href', d => d.avatar || '')
+        .style('display', d => d.avatar ? 'block' : 'none');
+    
+    node.select('.initial-text')
+        .text(d => d.name.charAt(0))
+        .style('display', d => d.avatar ? 'none' : 'block');
+    
+    node.select('.name-label')
+        .text(d => d.name);
+
+    const genderG = node.select('.gender-badge');
+    genderG.style('display', (d: Person) => d.gender === Gender.UNKNOWN ? 'none' : 'block');
+    genderG.select('circle')
+        .attr('fill', (d: Person) => d.gender === Gender.MALE ? '#3b82f6' : '#ec4899');
+    genderG.select('text')
+        .text((d: Person) => d.gender === Gender.MALE ? '♂' : '♀');
+
     const dragBehavior = drag<SVGGElement, Person>().on('start', (event, d) => {
         if (!event.active) simulation.alphaTarget(0.01).restart(); 
         isDragMovedRef.current = false;

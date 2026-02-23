@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Layout, Users, Map as MapIcon, Calendar, Upload, Download, Plus, Check, Loader2, ChevronDown, FolderOpen, Trash2, Edit3, Pin, PinOff, Info, Book, RefreshCw, Settings, Shield, Heart, Bug, Copy, ExternalLink, Sparkles } from 'lucide-react';
 import { GenealogyModule } from './components/GenealogyModule';
@@ -75,6 +74,7 @@ const App: React.FC = () => {
   const [jumpTargetPersonId, setJumpTargetPersonId] = useState<string | null>(null);
   const [jumpTargetEventId, setJumpTargetEventId] = useState<string | null>(null);
   const [jumpTargetCalendarPersonId, setJumpTargetCalendarPersonId] = useState<string | null>(null);
+  const [jumpTargetWikiId, setJumpTargetWikiId] = useState<string | null>(null);
 
   // --- Initialization ---
   const reloadData = async () => {
@@ -489,6 +489,11 @@ const App: React.FC = () => {
      setCurrentModule('CALENDAR');
   };
 
+  const handleJumpToWiki = (keywordId: string) => {
+     setJumpTargetWikiId(keywordId);
+     setCurrentModule('WIKI');
+  };
+
   if (isLoading) {
     return (
       <div className="h-screen w-screen bg-gray-950 flex flex-col items-center justify-center text-blue-500 gap-4">
@@ -720,6 +725,7 @@ const App: React.FC = () => {
              onUpdateProject={handleUpdateProject}
              targetPersonId={jumpTargetPersonId}
              onJumpToCalendar={handleJumpToCalendarPerson}
+             onJumpToWiki={handleJumpToWiki}
            />
          ) : currentModule === 'BLUEPRINT' ? (
            <BlueprintModule 
@@ -757,6 +763,7 @@ const App: React.FC = () => {
                onJumpToPerson={handleJumpToPerson}
                onJumpToEvent={handleJumpToCalendarEvent}
                onJumpToLocation={handleJumpToLocation}
+               targetKeywordId={jumpTargetWikiId}
             />
          )}
       </div>

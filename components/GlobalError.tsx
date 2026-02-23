@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Trash2, ShieldAlert, Database } from 'lucide-react';
 import { dbDeleteProject, loadAllData } from '../services/storage';
 
@@ -16,8 +16,8 @@ interface GlobalErrorState {
 /**
  * Global error boundary to catch and handle application-level crashes.
  */
-// Fix: Explicitly extend React.Component to ensure setState and props are properly inherited from the library.
-export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorState> {
+// Fix: Use named Component import to ensure setState and props are correctly inherited and recognized by TypeScript in all environments.
+export class GlobalError extends Component<GlobalErrorProps, GlobalErrorState> {
   public state: GlobalErrorState = {
     hasError: false,
     error: null,
@@ -37,7 +37,7 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
   // Lifecycle method for error catching.
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
-    // Fix: setState is correctly inherited when extending React.Component.
+    // Fix: Inherited setState is now correctly recognized.
     this.setState({ errorInfo });
   }
 
@@ -45,7 +45,7 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
   handleEmergencyReset = async () => {
     if (!confirm("确定要执行紧急重置吗？这将清空所有数据并恢复到初始状态。")) return;
     
-    // Fix: setState is correctly inherited when extending React.Component.
+    // Fix: Inherited setState is now correctly recognized.
     this.setState({ isRecovering: true });
     try {
       // 1. Clear DB
@@ -61,14 +61,14 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
     } catch (e) {
       console.error(e);
       alert("重置失败。");
-      // Fix: setState is correctly inherited when extending React.Component.
+      // Fix: Inherited setState is now correctly recognized.
       this.setState({ isRecovering: false });
     }
   };
 
   // 尝试只删除最后访问的项目（通常是导致崩溃的那个）
   handleDeleteActiveProject = async () => {
-     // Fix: setState is correctly inherited when extending React.Component.
+     // Fix: Inherited setState is now correctly recognized.
      this.setState({ isRecovering: true });
      try {
         const data = await loadAllData();
@@ -78,13 +78,13 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
            window.location.reload();
         } else {
            alert("无法读取当前工程信息，请尝试【完全重置】。");
-           // Fix: setState is correctly inherited when extending React.Component.
+           // Fix: Inherited setState is now correctly recognized.
            this.setState({ isRecovering: false });
         }
      } catch (e) {
         console.error(e);
         alert("操作失败，请尝试【完全重置】。");
-        // Fix: setState is correctly inherited when extending React.Component.
+        // Fix: Inherited setState is now correctly recognized.
         this.setState({ isRecovering: false });
      }
   };
@@ -151,7 +151,7 @@ export class GlobalError extends React.Component<GlobalErrorProps, GlobalErrorSt
       );
     }
 
-    // Fix: Access children via this.props which is correctly provided by extending React.Component.
+    // Fix: Inherited props is now correctly recognized.
     return this.props.children;
   }
 }

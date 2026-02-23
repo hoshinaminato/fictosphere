@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { GraphCanvas } from './GraphCanvas';
 import { Sidebar } from './Sidebar';
@@ -9,13 +8,15 @@ interface GenealogyModuleProps {
   onUpdateProject: (updatedProject: Project) => void;
   targetPersonId?: string | null;
   onJumpToCalendar?: (personId: string) => void;
+  onJumpToWiki?: (keywordId: string) => void;
 }
 
 export const GenealogyModule: React.FC<GenealogyModuleProps> = ({
   currentProject,
   onUpdateProject,
   targetPersonId,
-  onJumpToCalendar
+  onJumpToCalendar,
+  onJumpToWiki
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.NETWORK);
   const [selectedPersonId, setSelectedPersonId] = useState<string | undefined>(undefined);
@@ -232,6 +233,7 @@ export const GenealogyModule: React.FC<GenealogyModuleProps> = ({
          keywords={currentProject.keywords}
          selectedKeywordId={selectedKeywordId}
          onSelectKeyword={setSelectedKeywordId}
+         onJumpToWiki={onJumpToWiki}
          onUpdatePerson={handleUpdatePerson}
          onDeletePerson={handleDeletePerson}
          onAddPerson={handleAddPerson}

@@ -1,4 +1,5 @@
 
+
 // types.ts complete reconstruction
 
 export enum Gender {
@@ -371,6 +372,7 @@ declare global {
       exportProject: (data: ExportData) => Promise<boolean>;
       importProject: () => Promise<ExportData | null>;
       getAssetPath: () => Promise<string>;
+      openAssetPath: () => Promise<void>;
       selectAssetPath: () => Promise<string | null>;
       reloadApp: () => void;
     };

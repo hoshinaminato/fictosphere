@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Settings, X, FolderOpen, RefreshCw } from 'lucide-react';
+import { Settings, X, FolderOpen, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface SystemSettingsModalProps {
   isOpen: boolean;
@@ -11,6 +11,12 @@ interface SystemSettingsModalProps {
 
 export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({ isOpen, onClose, assetPath, onChangeAssetPath }) => {
   if (!isOpen) return null;
+
+  const handleOpenFolder = () => {
+    if (window.electronAPI) {
+      window.electronAPI.openAssetPath();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
@@ -32,12 +38,21 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({ isOpen
             <div className="text-xs text-gray-500">
               所有上传的图片（头像、附件等）将存储在此目录中。更改目录不会自动迁移旧文件，请手动移动文件或确保新目录已准备好。
             </div>
-            <button
-              onClick={onChangeAssetPath}
-              className="mt-2 bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 px-3 py-2 rounded text-xs font-bold flex items-center gap-2"
-            >
-              <FolderOpen size={14} /> 更改存储目录
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={onChangeAssetPath}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 px-3 py-2 rounded text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <FolderOpen size={14} /> 更改存储目录
+              </button>
+              <button
+                onClick={handleOpenFolder}
+                className="flex-1 bg-blue-900/20 hover:bg-blue-900/40 text-blue-400 border border-blue-800/50 px-3 py-2 rounded text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                title="在资源管理器中查看"
+              >
+                <ExternalLink size={14} /> 打开本地文件夹
+              </button>
+            </div>
           </div>
 
           <div className="border-t border-gray-800 pt-4">

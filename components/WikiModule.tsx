@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Project, Keyword, KeywordCategory, KeywordCategoryLabels, Attribute, Attachment, AnnotationDefinition } from '../types';
 import { Book, Search, Plus, Tag, Edit3, Trash2, BookOpen, Scroll, Shield, Zap, MapPin, Box, Check, X, User, Calendar, Link, UserPlus, Quote, AlertTriangle, Paperclip, ChevronRight, ChevronDown, ChevronUp, CornerDownRight, FolderTree, GitBranch, FileText, MessageSquare, Type, Maximize2, Minimize2, Dna, History, Layers, ScrollText } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
@@ -13,6 +12,7 @@ interface WikiModuleProps {
   onJumpToPerson?: (personId: string) => void;
   onJumpToEvent?: (eventId: string) => void;
   onJumpToLocation?: (locationId: string) => void;
+  targetKeywordId?: string | null;
 }
 
 // Recursive Tree Node Component (Sidebar)
@@ -97,7 +97,8 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
    onUpdateProject, 
    onJumpToPerson, 
    onJumpToEvent, 
-   onJumpToLocation
+   onJumpToLocation,
+   targetKeywordId
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -123,6 +124,13 @@ export const WikiModule: React.FC<WikiModuleProps> = ({
 
   const keywords = project.keywords || [];
   const selectedKeyword = keywords.find(k => k.id === selectedId);
+
+  // Handle external jump request
+  useEffect(() => {
+    if (targetKeywordId) {
+      handleSelect(targetKeywordId);
+    }
+  }, [targetKeywordId]);
 
   const rootAncestor = useMemo(() => {
      if (!selectedKeyword) return null;

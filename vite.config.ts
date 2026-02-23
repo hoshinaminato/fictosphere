@@ -13,8 +13,9 @@ export default defineConfig(({ mode }) => {
       'process.env.API_KEY': JSON.stringify(env.API_KEY || '')
     },
     server: {
-      port: 5174,
+      port: 3000,
       strictPort: true,
+      host: '0.0.0.0'
     }
   };
 });

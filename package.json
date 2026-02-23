@@ -12,11 +12,16 @@
     }
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hoshinaminato/fictosphere.git"
+  },
   "scripts": {
     "web": "vite",
     "electron": "concurrently \"vite\" \"wait-on tcp:5174 && electron .\"",
     "dev": "concurrently \"vite\" \"wait-on tcp:5174 && electron .\"",
     "build": "tsc && vite build",
+    "lint": "tsc --noEmit",
     "dist": "npm run build && electron-builder"
   },
   "dependencies": {
@@ -60,6 +65,10 @@
           "arch": ["x64"]
         },
         {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
           "target": "zip",
           "arch": ["x64"]
         }
@@ -67,7 +76,7 @@
       "icon": "assets/icon.svg"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": ["dmg", "zip"],
       "icon": "assets/icon.svg"
     },
     "linux": {
